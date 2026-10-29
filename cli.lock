@@ -6,10 +6,10 @@
     "jsr:@cliffy/internal@1.1.0": "1.1.0",
     "jsr:@cliffy/table@1.1.0": "1.1.0",
     "jsr:@deno/graph@0.111.0": "0.111.0",
-    "jsr:@skmtc/cli@0.10.0": "0.10.0",
-    "jsr:@skmtc/convert@~0.1.19": "0.1.20",
+    "jsr:@skmtc/cli@0.10.3": "0.10.3",
+    "jsr:@skmtc/convert@~0.1.20": "0.1.20",
     "jsr:@skmtc/core@0.31": "0.31.0",
-    "jsr:@skmtc/swagger2openapi@~0.1.4": "0.1.4",
+    "jsr:@skmtc/swagger2openapi@~0.1.4": "0.1.5",
     "jsr:@skmtc/worker@~0.3.60": "0.3.60",
     "jsr:@std/fmt@1": "1.0.10",
     "jsr:@std/fmt@^1.0.5": "1.0.10",
@@ -72,8 +72,8 @@
     "@deno/graph@0.111.0": {
       "integrity": "ffb61e93ab838d1b8f66798b99a1eb75ef96915e5aa53f9c5118e4d8cdefd776"
     },
-    "@skmtc/cli@0.10.0": {
-      "integrity": "8bf06f78075e302de0cd23494142908db7b058662a387e3c5426155dc1f4cb22",
+    "@skmtc/cli@0.10.3": {
+      "integrity": "2594f5cb1f1748f9922641c44855fa06b956511fd12c1e34f445ec0876ca121b",
       "dependencies": [
         "jsr:@cliffy/command",
         "jsr:@deno/graph",
@@ -119,8 +119,8 @@
         "npm:valibot"
       ]
     },
-    "@skmtc/swagger2openapi@0.1.4": {
-      "integrity": "98caa0d44ae1b34afd46023d3edd9811926990c766fd22db8761e533596bfae1",
+    "@skmtc/swagger2openapi@0.1.5": {
+      "integrity": "d866c833156127d0048a4ae1dbbfea5ca184c3af533f96c1f6036ae56b6fecc5",
       "dependencies": [
         "jsr:@std/yaml@^1.1.0"
       ]

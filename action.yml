@@ -32,7 +32,7 @@ inputs:
     required: false
   cli-version:
     description:
-      The exact @skmtc/cli version to run, such as 0.10.0. Empty means the
+      The exact @skmtc/cli version to run, such as 0.10.3. Empty means the
       version the action pins.
     required: false
   env:
