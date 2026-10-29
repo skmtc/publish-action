@@ -1,0 +1,137 @@
+name: Continuous Integration
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - 'retros/**'
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'retros/**'
+
+permissions:
+  contents: read
+
+jobs:
+  test-typescript:
+    name: TypeScript Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        id: setup-node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Install Dependencies
+        id: npm-ci
+        run: npm ci
+
+      - name: Check Format
+        id: npm-format-check
+        run: npm run format:check
+
+      - name: Lint
+        id: npm-lint
+        run: npm run lint
+
+      - name: Test
+        id: npm-ci-test
+        run: npm run ci-test
+
+  # Runs the action itself. The first two steps use the real CLI on a file that
+  # does not exist: a real install and a real `file-unreadable` result, with no
+  # hub call. Their logs hold the cold and warm install times for the README.
+  # The fake CLI steps check the outputs and the arguments.
+  test-action:
+    name: GitHub Actions Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v6
+
+      - name: Publish a missing file (cold install)
+        id: cold
+        continue-on-error: true
+        uses: ./
+        with:
+          file: does-not-exist.yaml
+          api: '@skmtc/publish-action-test'
+          token: dummy-token
+
+      - name: Publish a missing file (warm install)
+        id: warm
+        continue-on-error: true
+        uses: ./
+        with:
+          file: does-not-exist.yaml
+          api: '@skmtc/publish-action-test'
+          token: dummy-token
+
+      - name: Check that both failed
+        id: check-failed
+        shell: bash
+        env:
+          COLD: ${{ steps.cold.outcome }}
+          WARM: ${{ steps.warm.outcome }}
+        run: |
+          test "$COLD" = failure
+          test "$WARM" = failure
+
+      - name: Publish with the fake CLI, without origin-url
+        id: fake
+        uses: ./
+        env:
+          SKMTC_PUBLISH_ACTION_CLI_SPECIFIER: ./test/fake-cli.js
+        with:
+          file: test/openapi.yaml
+          api: '@skmtc/publish-action-test'
+          token: dummy-token
+
+      - name: Publish with the fake CLI, with origin-url
+        id: fake-origin
+        uses: ./
+        env:
+          SKMTC_PUBLISH_ACTION_CLI_SPECIFIER: ./test/fake-cli.js
+        with:
+          file: test/openapi.yaml
+          api: '@skmtc/publish-action-test'
+          token: dummy-token
+          origin-url: https://example.com/openapi.yaml
+
+      # The fake CLI returns the arguments it got as `revision`.
+      - name: Check the outputs
+        id: check-outputs
+        shell: bash
+        env:
+          REVISION: ${{ steps.fake.outputs.revision }}
+          URL: ${{ steps.fake.outputs.url }}
+          DEDUPED: ${{ steps.fake.outputs.deduped }}
+          CREATED: ${{ steps.fake.outputs.created }}
+          ORIGIN_REVISION: ${{ steps.fake-origin.outputs.revision }}
+        run: |
+          set -x
+          test "$URL" = https://skmtc.dev/@skmtc/publish-action-test
+          test "$DEDUPED" = true
+          test "$CREATED" = false
+          test "$REVISION" = 'api publish test/openapi.yaml --api @skmtc/publish-action-test --json'
+          test "$ORIGIN_REVISION" = 'api publish test/openapi.yaml --api @skmtc/publish-action-test --json --origin-url https://example.com/openapi.yaml'

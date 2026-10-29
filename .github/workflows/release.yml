@@ -1,0 +1,38 @@
+# Moves the major tag (v1, v2, ...) to a published release, so that
+# `uses: skmtc/publish-action@v1` runs the latest v1.x.y. Prereleases do not
+# move it.
+name: Move Major Tag
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  move-major-tag:
+    name: Move the major tag
+    if: ${{ !github.event.release.prerelease }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v6
+
+      - name: Move the major tag
+        id: move
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          major="${TAG_NAME%%.*}"
+          if ! printf '%s' "$major" | grep -Eq '^v[0-9]+$'; then
+            echo "::error::Release tag $TAG_NAME does not start with vMAJOR."
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git tag -fa "$major" -m "Update $major tag" "$TAG_NAME^{commit}"
+          git push origin "$major" --force
