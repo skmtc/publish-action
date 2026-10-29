@@ -78,15 +78,20 @@ describe('install.ts', () => {
   })
 
   describe('cacheCli', () => {
-    it('runs deno cache with the pinned deno', async () => {
+    it('runs deno cache with the pinned deno and the lock flags', async () => {
       exec.exec.mockResolvedValue(0)
 
-      await cacheCli('/tool-cache/deno', 'jsr:@skmtc/cli@0.9.60')
+      await cacheCli('/tool-cache/deno', 'jsr:@skmtc/cli@0.9.60', [
+        '--lock=/action/cli.lock',
+        '--frozen'
+      ])
 
       expect(exec.exec).toHaveBeenCalledWith('/tool-cache/deno', [
         'cache',
         '--no-config',
         '--minimum-dependency-age=0',
+        '--lock=/action/cli.lock',
+        '--frozen',
         'jsr:@skmtc/cli@0.9.60'
       ])
     })

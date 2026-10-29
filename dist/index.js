@@ -29,7 +29,7 @@ import require$$1$2 from 'node:zlib';
 import require$$5$1 from 'node:perf_hooks';
 import require$$8$1 from 'node:util/types';
 import require$$1$1 from 'node:worker_threads';
-import require$$1$3 from 'node:url';
+import require$$1$3, { fileURLToPath } from 'node:url';
 import require$$5$2 from 'node:async_hooks';
 import require$$1$4 from 'node:console';
 import require$$1$5 from 'node:dns';
@@ -30830,6 +30830,12 @@ function info(message) {
 /** The `@skmtc/cli` version the action installs when `cli-version` is empty. */
 const DEFAULT_CLI_VERSION = '0.9.60';
 /**
+ * The Deno lockfile for {@link DEFAULT_CLI_VERSION}, at the root of the action.
+ * `src/` and `dist/` both sit one level below it, so the path does not depend
+ * on the working directory (the user's checkout). `npm run cli-lock` writes it.
+ */
+const CLI_LOCK_PATH = path$1.join(path$1.dirname(fileURLToPath(import.meta.url)), '..', 'cli.lock');
+/**
  * Undocumented test hook: a module specifier that replaces
  * `jsr:@skmtc/cli@<version>`. When it is set, the action skips `deno cache`.
  */
@@ -30859,26 +30865,37 @@ function readInputs() {
         env: getInput('env')
     };
 }
-/** The module specifier of the CLI, or the test hook when it is set. */
+/**
+ * The module specifier of the CLI, or the test hook when it is set, and the
+ * lock flags for it. Only {@link DEFAULT_CLI_VERSION} has a lockfile: a custom
+ * `cli-version` and the test hook run unlocked.
+ */
 function cliSpecifier(cliVersion, env) {
     const override = env[CLI_SPECIFIER_ENV];
     if (override) {
-        return { specifier: override, overridden: true };
+        return { specifier: override, overridden: true, lockFlags: [] };
     }
-    return { specifier: `jsr:@skmtc/cli@${cliVersion}`, overridden: false };
+    return {
+        specifier: `jsr:@skmtc/cli@${cliVersion}`,
+        overridden: false,
+        lockFlags: cliVersion === DEFAULT_CLI_VERSION
+            ? [`--lock=${CLI_LOCK_PATH}`, '--frozen']
+            : []
+    };
 }
 /** The arguments of `deno cache` for the CLI. */
-function cacheArgs(specifier) {
-    return ['cache', ...DENO_FLAGS, specifier];
+function cacheArgs(specifier, lockFlags) {
+    return ['cache', ...DENO_FLAGS, ...lockFlags, specifier];
 }
 /**
  * The arguments of `deno run ... api publish`. The token is not one of them:
  * it reaches the CLI as `SKMTC_HUB_TOKEN` (see {@link childEnv}).
  */
-function publishArgs(inputs, specifier) {
+function publishArgs(inputs, specifier, lockFlags) {
     return [
         'run',
         ...DENO_FLAGS,
+        ...lockFlags,
         '--no-prompt',
         `--allow-env=${CLI_ENV_VARS.join(',')}`,
         `--allow-read=${inputs.file}`,
@@ -34179,8 +34196,8 @@ async function installDeno(platform = process.platform, arch = process.arch) {
     return { deno: path$1.join(newCachedPath, binary), cached: false };
 }
 /** Downloads the CLI and its dependencies into the Deno cache. */
-async function cacheCli(deno, specifier) {
-    await exec(deno, cacheArgs(specifier));
+async function cacheCli(deno, specifier, lockFlags) {
+    await exec(deno, cacheArgs(specifier, lockFlags));
 }
 /** The name of the Deno release zip for a platform and architecture. */
 function zipName(platform, arch) {
@@ -34360,16 +34377,16 @@ async function run() {
         const token = getInput('token', { required: true });
         setSecret(token);
         const inputs = readInputs();
-        const { specifier, overridden } = cliSpecifier(inputs.cliVersion, process.env);
+        const { specifier, overridden, lockFlags } = cliSpecifier(inputs.cliVersion, process.env);
         const started = Date.now();
         const { deno, cached } = await installDeno();
         if (!overridden) {
-            await cacheCli(deno, specifier);
+            await cacheCli(deno, specifier, lockFlags);
         }
         const cli = overridden ? specifier : `@skmtc/cli ${inputs.cliVersion}`;
         const installLine = `Installed Deno ${DENO_VERSION} and ${cli} in ${Date.now() - started} ms (deno cached: ${cached ? 'yes' : 'no'})`;
         info(installLine);
-        const output = await getExecOutput(deno, publishArgs(inputs, specifier), { env: childEnv(process.env, token), ignoreReturnCode: true });
+        const output = await getExecOutput(deno, publishArgs(inputs, specifier, lockFlags), { env: childEnv(process.env, token), ignoreReturnCode: true });
         await report(output, inputs.file, installLine);
     }
     catch (error) {

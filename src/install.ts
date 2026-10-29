@@ -42,8 +42,12 @@ export async function installDeno(
 }
 
 /** Downloads the CLI and its dependencies into the Deno cache. */
-export async function cacheCli(deno: string, specifier: string): Promise<void> {
-  await exec.exec(deno, cacheArgs(specifier))
+export async function cacheCli(
+  deno: string,
+  specifier: string,
+  lockFlags: string[]
+): Promise<void> {
+  await exec.exec(deno, cacheArgs(specifier, lockFlags))
 }
 
 /** The name of the Deno release zip for a platform and architecture. */

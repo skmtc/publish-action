@@ -17,7 +17,7 @@ export async function run(): Promise<void> {
     core.setSecret(token)
 
     const inputs = readInputs()
-    const { specifier, overridden } = cliSpecifier(
+    const { specifier, overridden, lockFlags } = cliSpecifier(
       inputs.cliVersion,
       process.env
     )
@@ -25,7 +25,7 @@ export async function run(): Promise<void> {
     const started = Date.now()
     const { deno, cached } = await installDeno()
     if (!overridden) {
-      await cacheCli(deno, specifier)
+      await cacheCli(deno, specifier, lockFlags)
     }
     const cli = overridden ? specifier : `@skmtc/cli ${inputs.cliVersion}`
     const installLine = `Installed Deno ${DENO_VERSION} and ${cli} in ${Date.now() - started} ms (deno cached: ${cached ? 'yes' : 'no'})`
@@ -33,7 +33,7 @@ export async function run(): Promise<void> {
 
     const output = await exec.getExecOutput(
       deno,
-      publishArgs(inputs, specifier),
+      publishArgs(inputs, specifier, lockFlags),
       { env: childEnv(process.env, token), ignoreReturnCode: true }
     )
 

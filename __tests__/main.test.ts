@@ -5,6 +5,7 @@
  * no Deno is downloaded and no command runs.
  */
 import * as path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { jest } from '@jest/globals'
 import * as core from '../__fixtures__/core.js'
 import * as exec from '../__fixtures__/exec.js'
@@ -19,6 +20,12 @@ jest.unstable_mockModule('@actions/tool-cache', () => tc)
 // mocks are used in place of any actual dependencies.
 const { run } = await import('../src/main.js')
 
+// src/ and __tests__/ both sit one level below the action root.
+const LOCK = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'cli.lock'
+)
 const TOKEN = 'skmtc_pat_secret'
 const TOOL_DIR = '/tool-cache/deno/2.9.8/x64'
 const DENO = path.join(
@@ -98,11 +105,42 @@ describe('main.ts', () => {
       'cache',
       '--no-config',
       '--minimum-dependency-age=0',
+      `--lock=${LOCK}`,
+      '--frozen',
       'jsr:@skmtc/cli@0.9.60'
     ])
     const { command, args } = publishCall()
     expect(command).toBe(DENO)
     expect(args).toContain('jsr:@skmtc/cli@0.9.60')
+  })
+
+  it('locks the default version on both deno calls', async () => {
+    await run()
+
+    const cacheCall = exec.exec.mock.calls[0][1] ?? []
+    for (const args of [cacheCall, publishCall().args]) {
+      expect(args).toContain(`--lock=${LOCK}`)
+      expect(args).toContain('--frozen')
+    }
+  })
+
+  it('runs a custom cli-version unlocked on both deno calls', async () => {
+    mockInputs({
+      file: 'openapi.yaml',
+      api: '@acme/pets',
+      token: TOKEN,
+      'cli-version': '0.9.59'
+    })
+
+    await run()
+
+    const cacheCall = exec.exec.mock.calls[0][1] ?? []
+    expect(cacheCall).toContain('jsr:@skmtc/cli@0.9.59')
+    expect(publishCall().args).toContain('jsr:@skmtc/cli@0.9.59')
+    for (const args of [cacheCall, publishCall().args]) {
+      expect(args.some((arg) => arg.startsWith('--lock'))).toBe(false)
+      expect(args).not.toContain('--frozen')
+    }
   })
 
   it('passes no --origin-url when origin-url is empty', async () => {
