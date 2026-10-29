@@ -6,6 +6,14 @@ import * as core from '@actions/core'
 export const DEFAULT_CLI_VERSION = '0.9.60'
 
 /**
+ * The Deno version the action downloads. The action never uses a PATH deno.
+ * It sits here, not in install.ts, so that `npm run cli-lock` can import it:
+ * Node strips the types of this file, but cannot resolve install.ts's
+ * `./args.js` import.
+ */
+export const DENO_VERSION = '2.9.8'
+
+/**
  * The Deno lockfile for {@link DEFAULT_CLI_VERSION}, at the root of the action.
  * `src/` and `dist/` both sit one level below it, so the path does not depend
  * on the working directory (the user's checkout). `npm run cli-lock` writes it.

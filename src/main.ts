@@ -1,7 +1,13 @@
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
-import { childEnv, cliSpecifier, publishArgs, readInputs } from './args.js'
-import { cacheCli, DENO_VERSION, installDeno } from './install.js'
+import {
+  childEnv,
+  cliSpecifier,
+  DENO_VERSION,
+  publishArgs,
+  readInputs
+} from './args.js'
+import { cacheCli, installDeno } from './install.js'
 import { report } from './result.js'
 
 /**

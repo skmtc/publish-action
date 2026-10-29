@@ -149,19 +149,23 @@ npm run bundle
 Commit `dist/` with each change to `src/`. The `Check Transpiled JavaScript`
 workflow fails when `dist/` does not match the source.
 
-When you change `DEFAULT_CLI_VERSION` in `src/args.ts` or `DENO_VERSION` in
-`src/install.ts`, write the lockfile again and commit it:
+When you change `DEFAULT_CLI_VERSION` or `DENO_VERSION` in `src/args.ts`, write
+the lockfile again and commit it:
 
 ```sh
 npm run cli-lock
 ```
 
-The script needs `deno` on `PATH`, at the version in `DENO_VERSION` in
-`src/install.ts`. The `cli.lock` test fails when `cli.lock` does not lock
-`DEFAULT_CLI_VERSION`.
+The script needs `deno` on `PATH`, at the version in `DENO_VERSION`. It stops
+when the versions differ. When `deno cache` fails, the script keeps the old
+`cli.lock`. The `cli.lock` test fails when `cli.lock` does not lock
+`DEFAULT_CLI_VERSION`, or has a lockfile format other than the one Deno 2.9.8
+writes (`5`).
 
 ## Releases
 
 Publish a GitHub release with a tag such as `v1.2.3`. The `Move Major Tag`
 workflow then moves `v1` to that release. A prerelease does not move the tag
-until you promote it to a full release.
+until you promote it to a full release. A release that is not the highest `v1`
+release does not move the tag. For example, when you promote `v1.1.0-rc1` after
+`v1.3.0`, `v1` stays at `v1.3.0`.
