@@ -114,24 +114,27 @@ describe('args.ts', () => {
   })
 
   describe('childEnv', () => {
-    it('keeps the parent environment and adds the token', () => {
+    it('keeps the parent environment and adds the token and NO_COLOR', () => {
       expect(
         childEnv({ PATH: '/usr/bin', HOME: '/home/runner' }, 'secret')
       ).toEqual({
         PATH: '/usr/bin',
         HOME: '/home/runner',
+        NO_COLOR: '1',
         SKMTC_HUB_TOKEN: 'secret'
       })
     })
 
     it('replaces an inherited SKMTC_HUB_TOKEN with the input', () => {
       expect(childEnv({ SKMTC_HUB_TOKEN: 'old' }, 'new')).toEqual({
+        NO_COLOR: '1',
         SKMTC_HUB_TOKEN: 'new'
       })
     })
 
     it('drops undefined variables', () => {
       expect(childEnv({ UNSET: undefined }, 't')).toEqual({
+        NO_COLOR: '1',
         SKMTC_HUB_TOKEN: 't'
       })
     })

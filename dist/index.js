@@ -30898,10 +30898,16 @@ function publishArgs(inputs, specifier) {
 /**
  * The environment of the CLI process. `@actions/exec` replaces the child's
  * environment with this object, so it carries the whole parent environment.
+ * `NO_COLOR` keeps Deno's crash output, which reaches annotations, free of
+ * escape codes.
  */
 function childEnv(env, token) {
     const defined = Object.entries(env).filter((entry) => entry[1] !== undefined);
-    return { ...Object.fromEntries(defined), SKMTC_HUB_TOKEN: token };
+    return {
+        ...Object.fromEntries(defined),
+        NO_COLOR: '1',
+        SKMTC_HUB_TOKEN: token
+    };
 }
 
 var re = {exports: {}};
