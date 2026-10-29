@@ -48,13 +48,12 @@ For a public repository that is a linked repository of the API, you can publish
 without a token. Give the job `id-token: write` and remove `token`:
 
 ```yaml
-permissions:
-  contents: read
-  id-token: write
-
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v6
 
@@ -158,8 +157,10 @@ match its hash in the lockfile.
 
 A custom `cli-version` is not locked. Deno resolves the newest dependency
 versions that match the CLI's ranges, on each runner. Those dependencies run
-while the token is readable. Set `cli-version` only to a version you trust with
-its dependencies as they are on the day of the run.
+while the token is readable. Without `token`, they can also read the OIDC
+request token and request a GitHub OIDC token for any audience. Set
+`cli-version` only to a version you trust with its dependencies as they are on
+the day of the run.
 
 ## Outputs
 

@@ -68,7 +68,10 @@ const OIDC_REQUEST_URL =
   'https://run-actions-1-azure-eastus.actions.githubusercontent.com/42/idtoken/abc/def?api-version=2.0'
 
 describe('main.ts', () => {
-  const saved = ENV_VARS.map((name) => [name, process.env[name]] as const)
+  const saved = ENV_VARS.map((name): [string, string | undefined] => [
+    name,
+    process.env[name]
+  ])
 
   beforeEach(() => {
     for (const name of ENV_VARS) {
