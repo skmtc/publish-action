@@ -176,6 +176,9 @@ describe('main.ts', () => {
     })
 
     it('fails with the CLI missing-permission text on exit 2', async () => {
+      // A job without `id-token: write`.
+      delete process.env.ACTIONS_ID_TOKEN_REQUEST_URL
+      delete process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN
       // CLI 0.10.0's stderr, shortened.
       const stderr = [
         'Error: missing required argument: --token',
@@ -186,6 +189,9 @@ describe('main.ts', () => {
 
       await run()
 
+      expect(publishCall().args).toContain(
+        '--allow-net=api.skmtc.dev,api.skmtc.net,api.skmtc.co.uk'
+      )
       expect(core.setFailed).toHaveBeenCalledWith(
         `skmtc api publish exited with code 2 and no JSON result.\n${stderr}`
       )

@@ -163,7 +163,7 @@ describe('args.ts', () => {
       )
     })
 
-    it.each([undefined, '', 'not a url'])(
+    it.each([undefined, '', 'not a url', 'file:///x', 'https://a,b.com/x'])(
       'adds no OIDC host when the request URL is %p',
       (requestUrl) => {
         const args = publishArgs(baseInputs, 'x', [], '', {

@@ -30938,14 +30938,12 @@ function publishArgs(inputs, specifier, lockFlags, token, env) {
 }
 /**
  * The host of the OIDC token endpoint, or nothing when the variable is unset
- * or not a URL.
+ * or not a URL with a host. A comma would split `--allow-net`, so a host
+ * with one adds nothing too.
  */
 function oidcHosts(env) {
-    const requestUrl = env[OIDC_REQUEST_URL_VAR];
-    if (!requestUrl || !URL.canParse(requestUrl)) {
-        return [];
-    }
-    return [new URL(requestUrl).host];
+    const host = URL.parse(env[OIDC_REQUEST_URL_VAR] ?? '')?.host;
+    return host && !host.includes(',') ? [host] : [];
 }
 /**
  * The environment of the CLI process. `@actions/exec` replaces the child's
