@@ -123,8 +123,7 @@ job. A warm install is a second run in the same job.
 The CI rows come from one run of the `GitHub Actions Test` job of the
 [CI workflow](.github/workflows/ci.yml), with Deno 2.9.8 and CLI 0.9.60
 ([run 40885678489](https://github.com/skmtc/publish-action/actions/runs/40885678489)).
-Each run logs
-`Installed Deno <version> and @skmtc/cli <version> in <n> ms`.
+Each run logs `Installed Deno <version> and @skmtc/cli <version> in <n> ms`.
 
 ## Development
 
