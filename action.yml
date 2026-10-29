@@ -1,0 +1,53 @@
+name: skmtc publish
+description:
+  Publish an OpenAPI document to skmtc.dev as a revision with skmtc api publish
+author: skmtc
+
+branding:
+  icon: upload-cloud
+  color: blue
+
+inputs:
+  file:
+    description: Path of the OpenAPI document to publish.
+    required: true
+  api:
+    description: The hub API, as @account/slug.
+    required: true
+  token:
+    description: A skmtc.dev personal access token. Store it as a secret.
+    required: true
+  visibility:
+    description:
+      public or private. Set it only for the first publish, which creates the
+      API.
+    required: false
+  origin-url:
+    description:
+      A URL the hub records as the document's source and refetches daily. No
+      default; the action passes --origin-url only when this is set.
+    required: false
+  cli-version:
+    description:
+      The exact @skmtc/cli version to run, such as 0.9.60. Empty means the
+      version the action pins.
+    required: false
+  env:
+    description: The hub environment. Empty means production.
+    required: false
+
+outputs:
+  revision:
+    description: The content ref of the revision.
+  url:
+    description: The URL of the revision on skmtc.dev.
+  deduped:
+    description:
+      "'true' when the hub already had these bytes and added no revision, else
+      'false'."
+  created:
+    description: "'true' when the publish created the API, else 'false'."
+
+runs:
+  using: node24
+  main: dist/index.js

@@ -1,0 +1,141 @@
+# skmtc publish action
+
+Publish an OpenAPI document to [skmtc.dev](https://skmtc.dev) as a revision of a
+hub API.
+
+The action runs `skmtc api publish` from
+[`@skmtc/cli`](https://jsr.io/@skmtc/cli). It downloads a pinned Deno, caches a
+pinned CLI version, runs the CLI in JSON mode and maps its result to outputs, a
+job summary and annotations. It holds no upload logic of its own.
+
+## Usage
+
+Publish on each push to `main`:
+
+```yaml
+name: Publish API
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - id: publish
+        # Pin to a full commit SHA. The comment records the release.
+        uses: skmtc/publish-action@<full-commit-sha> # v1.0.0
+        with:
+          file: openapi.yaml
+          api: '@acme/pets'
+          token: ${{ secrets.SKMTC_HUB_TOKEN }}
+
+      - run: echo "Published ${{ steps.publish.outputs.url }}"
+```
+
+Pin `uses:` to a full commit SHA, not to a tag: a tag can move, a SHA cannot.
+See
+[Using third-party actions](https://docs.github.com/en/actions/reference/security/secure-use#using-third-party-actions).
+
+> [!WARNING]
+>
+> Do not run this action from a `pull_request_target` workflow. That trigger
+> gives code from a fork access to your secrets, and so to your skmtc.dev token.
+> Publish from `push` to your default branch.
+
+### The first publish
+
+The first publish creates the API. Set `visibility` for that run only:
+
+```yaml
+with:
+  file: openapi.yaml
+  api: '@acme/pets'
+  token: ${{ secrets.SKMTC_HUB_TOKEN }}
+  visibility: private
+```
+
+Then remove `visibility`. A publish with `visibility` to an API that exists does
+not send webhook events or pipeline deliveries, and drops `origin-url`
+(skmtc/skmtc-hub#2146).
+
+### The origin URL
+
+`origin-url` has no default. The hub records it as the source of the document,
+refetches it daily, and finds duplicate sources by URL. A URL with a commit SHA
+would add a source on every publish, and the hub cannot refetch a URL in a
+private repository.
+
+For a public repository, you can set the URL of the file on the default branch,
+so the hub keeps the API current if CI stops:
+
+```yaml
+with:
+  origin-url:
+    https://github.com/${{ github.repository }}/blob/${{
+    github.event.repository.default_branch }}/openapi.yaml
+```
+
+## Inputs
+
+| Input         | Required | Description                                                                                |
+| ------------- | -------- | ------------------------------------------------------------------------------------------ |
+| `file`        | yes      | Path of the OpenAPI document.                                                              |
+| `api`         | yes      | The hub API, as `@account/slug`.                                                           |
+| `token`       | yes      | A skmtc.dev personal access token. Store it as a secret.                                   |
+| `visibility`  | no       | `public` or `private`. Set it for the first publish only, which creates the API.           |
+| `origin-url`  | no       | A URL the hub refetches daily. No default. See [The origin URL](#the-origin-url).          |
+| `cli-version` | no       | The exact `@skmtc/cli` version, such as `0.9.60`. Empty means the version the action pins. |
+| `env`         | no       | The hub environment. Empty means production.                                               |
+
+## Outputs
+
+| Output     | Description                                                          |
+| ---------- | -------------------------------------------------------------------- |
+| `revision` | The content ref of the revision.                                     |
+| `url`      | The URL of the revision on skmtc.dev.                                |
+| `deduped`  | `'true'` when the hub already had these bytes and added no revision. |
+| `created`  | `'true'` when the publish created the API.                           |
+
+The action sets the outputs only when the publish succeeds. When it fails, the
+step fails with an error annotation. For an invalid document, a bad request or a
+file it cannot read, the annotation points at `file`.
+
+## Install time
+
+The action downloads Deno and caches `@skmtc/cli` with its dependencies, in each
+job. A warm install is a second run in the same job.
+
+| Runner                                      | Cold install | Warm install |
+| ------------------------------------------- | ------------ | ------------ |
+| `ubuntu-latest`                             | to measure   | to measure   |
+| `macos-latest`                              | to measure   | to measure   |
+| `windows-latest`                            | to measure   | to measure   |
+| macOS arm64 (local, Deno 2.9.8, CLI 0.9.60) | 9.1 s        | 1.2 s        |
+
+The CI rows come from the `GitHub Actions Test` job of the
+[CI workflow](.github/workflows/ci.yml). Each run logs
+`Installed Deno <version> and @skmtc/cli <version> in <n> ms`.
+
+## Development
+
+```sh
+npm ci
+npm run format:check && npm run lint && npm run ci-test
+npm run bundle
+```
+
+Commit `dist/` with each change to `src/`. The `Check Transpiled JavaScript`
+workflow fails when `dist/` does not match the source.
+
+## Releases
+
+Publish a GitHub release with a tag such as `v1.2.3`. The `Move Major Tag`
+workflow then moves `v1` to that release. Prereleases do not move the tag.
