@@ -237,11 +237,11 @@ describe('main.ts', () => {
       '--minimum-dependency-age=0',
       `--lock=${LOCK}`,
       '--frozen',
-      'jsr:@skmtc/cli@0.10.0'
+      'jsr:@skmtc/cli@0.10.3'
     ])
     const { command, args } = publishCall()
     expect(command).toBe(DENO)
-    expect(args).toContain('jsr:@skmtc/cli@0.10.0')
+    expect(args).toContain('jsr:@skmtc/cli@0.10.3')
   })
 
   it('locks the default version on both deno calls', async () => {
@@ -308,7 +308,7 @@ describe('main.ts', () => {
     await run()
 
     const line = expect.stringMatching(
-      /^Installed Deno 2\.9\.8 and @skmtc\/cli 0\.10\.0 in \d+ ms \(deno cached: yes\)$/
+      /^Installed Deno 2\.9\.8 and @skmtc\/cli 0\.10\.3 in \d+ ms \(deno cached: yes\)$/
     )
     expect(core.info).toHaveBeenCalledWith(line)
     expect(core.summary.addRaw).toHaveBeenCalledWith(line, true)
@@ -321,7 +321,7 @@ describe('main.ts', () => {
 
     expect(exec.exec).not.toHaveBeenCalled()
     expect(publishCall().args).toContain('./test/fake-cli.js')
-    expect(publishCall().args).not.toContain('jsr:@skmtc/cli@0.10.0')
+    expect(publishCall().args).not.toContain('jsr:@skmtc/cli@0.10.3')
   })
 
   it('fails before installing on an invalid cli-version', async () => {

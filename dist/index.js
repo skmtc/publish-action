@@ -30828,7 +30828,7 @@ function info(message) {
 }
 
 /** The `@skmtc/cli` version the action installs when `cli-version` is empty. */
-const DEFAULT_CLI_VERSION = '0.10.0';
+const DEFAULT_CLI_VERSION = '0.10.3';
 /**
  * The Deno version the action downloads. The action never uses a PATH deno.
  * It sits here, not in install.ts, so that `npm run cli-lock` can import it:

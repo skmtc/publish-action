@@ -23,7 +23,7 @@ const baseInputs = {
   api: '@acme/pets',
   visibility: '',
   originUrl: '',
-  cliVersion: '0.10.0',
+  cliVersion: '0.10.3',
   env: ''
 }
 
@@ -51,7 +51,7 @@ describe('args.ts', () => {
   describe('publishArgs', () => {
     it('builds the deno run command with only the required inputs', () => {
       expect(
-        publishArgs(baseInputs, 'jsr:@skmtc/cli@0.10.0', [], TOKEN, {})
+        publishArgs(baseInputs, 'jsr:@skmtc/cli@0.10.3', [], TOKEN, {})
       ).toEqual([
         'run',
         '--no-config',
@@ -60,7 +60,7 @@ describe('args.ts', () => {
         '--allow-env=SKMTC_HUB_TOKEN,SKMTC_ENV,SKMTC_API_ORIGIN',
         '--allow-read=openapi.yaml',
         '--allow-net=api.skmtc.dev,api.skmtc.net,api.skmtc.co.uk',
-        'jsr:@skmtc/cli@0.10.0',
+        'jsr:@skmtc/cli@0.10.3',
         'api',
         'publish',
         'openapi.yaml',
@@ -73,7 +73,7 @@ describe('args.ts', () => {
     it('passes no --origin-url when origin-url is empty', () => {
       const args = publishArgs(
         baseInputs,
-        'jsr:@skmtc/cli@0.10.0',
+        'jsr:@skmtc/cli@0.10.3',
         [],
         TOKEN,
         {}
@@ -85,7 +85,7 @@ describe('args.ts', () => {
     it('puts the lock flags after the shared deno flags', () => {
       const args = publishArgs(
         baseInputs,
-        'jsr:@skmtc/cli@0.10.0',
+        'jsr:@skmtc/cli@0.10.3',
         LOCK_FLAGS,
         TOKEN,
         {}
@@ -108,7 +108,7 @@ describe('args.ts', () => {
           originUrl: 'https://github.com/acme/pets/blob/main/openapi.yaml',
           env: 'staging'
         },
-        'jsr:@skmtc/cli@0.10.0',
+        'jsr:@skmtc/cli@0.10.3',
         [],
         TOKEN,
         {}
@@ -183,21 +183,21 @@ describe('args.ts', () => {
 
   describe('cacheArgs', () => {
     it('caches the specifier without config and without the age gate', () => {
-      expect(cacheArgs('jsr:@skmtc/cli@0.10.0', [])).toEqual([
+      expect(cacheArgs('jsr:@skmtc/cli@0.10.3', [])).toEqual([
         'cache',
         '--no-config',
         '--minimum-dependency-age=0',
-        'jsr:@skmtc/cli@0.10.0'
+        'jsr:@skmtc/cli@0.10.3'
       ])
     })
 
     it('puts the lock flags before the specifier', () => {
-      expect(cacheArgs('jsr:@skmtc/cli@0.10.0', LOCK_FLAGS)).toEqual([
+      expect(cacheArgs('jsr:@skmtc/cli@0.10.3', LOCK_FLAGS)).toEqual([
         'cache',
         '--no-config',
         '--minimum-dependency-age=0',
         ...LOCK_FLAGS,
-        'jsr:@skmtc/cli@0.10.0'
+        'jsr:@skmtc/cli@0.10.3'
       ])
     })
   })

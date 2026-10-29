@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import * as core from '@actions/core'
 
 /** The `@skmtc/cli` version the action installs when `cli-version` is empty. */
-export const DEFAULT_CLI_VERSION = '0.10.0'
+export const DEFAULT_CLI_VERSION = '0.10.3'
 
 /**
  * The Deno version the action downloads. The action never uses a PATH deno.

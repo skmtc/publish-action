@@ -153,7 +153,7 @@ with:
 | `token`       | no       | A skmtc.dev personal access token. Store it as a secret. Empty: sign in with OIDC.         |
 | `visibility`  | no       | `public` or `private`. Set it for the first publish only, which creates the API.           |
 | `origin-url`  | no       | A URL the hub refetches daily. No default. See [The origin URL](#the-origin-url).          |
-| `cli-version` | no       | The exact `@skmtc/cli` version, such as `0.10.0`. Empty means the version the action pins. |
+| `cli-version` | no       | The exact `@skmtc/cli` version, such as `0.10.3`. Empty means the version the action pins. |
 | `env`         | no       | The hub environment. Empty means production.                                               |
 
 ### The CLI version and its dependencies
