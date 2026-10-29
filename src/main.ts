@@ -18,9 +18,11 @@ import { report } from './result.js'
  */
 export async function run(): Promise<void> {
   try {
-    // Masked before anything else can print it.
-    const token = core.getInput('token', { required: true })
-    core.setSecret(token)
+    // Masked before anything else can print it. Empty means OIDC.
+    const token = core.getInput('token')
+    if (token) {
+      core.setSecret(token)
+    }
 
     const inputs = readInputs()
     const { specifier, overridden, lockFlags } = cliSpecifier(
@@ -39,7 +41,7 @@ export async function run(): Promise<void> {
 
     const output = await exec.getExecOutput(
       deno,
-      publishArgs(inputs, specifier, lockFlags),
+      publishArgs(inputs, specifier, lockFlags, token, process.env),
       { env: childEnv(process.env, token), ignoreReturnCode: true }
     )
 

@@ -44,11 +44,69 @@ Pin `uses:` to a full commit SHA, not to a tag: a tag can move, a SHA cannot.
 See
 [Using third-party actions](https://docs.github.com/en/actions/reference/security/secure-use#using-third-party-actions).
 
+For a public repository that is a linked repository of the API, you can publish
+without a token. Give the job `id-token: write` and remove `token`:
+
+```yaml
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: skmtc/publish-action@<full-commit-sha> # v1.0.0
+        with:
+          file: openapi.yaml
+          api: '@acme/pets'
+```
+
+See [Sign in with GitHub Actions OIDC](#sign-in-with-github-actions-oidc).
+
 > [!WARNING]
 >
 > Do not run this action from a `pull_request_target` workflow. That trigger
 > gives code from a fork access to your secrets, and so to your skmtc.dev token.
-> Publish from `push` to your default branch.
+> With `id-token: write`, the code from a fork can also request an OIDC token
+> and publish as your linked repository. Publish from `push` to your default
+> branch.
+
+### Sign in with GitHub Actions OIDC
+
+When `token` is empty, the CLI signs in with GitHub Actions OIDC. It requests an
+OIDC token from GitHub and exchanges it at the hub for a short-lived token that
+can publish to one API.
+
+1. An admin of the API links the repository on skmtc.dev: open the API settings,
+   then **Linked repositories**. The repository must be public, and the admin
+   must have push access to it. The link names the repository, the workflow file
+   that publishes (such as `.github/workflows/publish.yml`) and, if you want, an
+   environment. The job must run from that workflow file. If the link names an
+   environment, the job must use that environment.
+2. Give the job `permissions: { contents: read, id-token: write }`. Without
+   `id-token: write`, GitHub gives the job no OIDC token, and the CLI stops with
+   a message that names the permission.
+
+Limits:
+
+- OIDC works only for a public repository. For a private repository, set `token`
+  to a personal access token.
+- OIDC cannot create an API. The first publish of a new API needs a personal
+  access token in `token`, or a publish from your machine after `skmtc login`.
+  See [The first publish](#the-first-publish).
+- `origin-url` does not work without `token`. A linked repository token cannot
+  add a source, so the CLI refuses `origin-url` before it requests an OIDC
+  token.
+- A custom `cli-version` older than 0.10.0 has no OIDC. Without `token`, it
+  fails with that version's message for a missing token.
+- A renamed workflow file, or a job in another workflow file or environment,
+  does not match the link. The hub refuses the exchange (`oidc-exchange`, 403)
+  until an admin links the workflow file and environment the job uses.
+
+The action shows the CLI's OIDC errors (`oidc-token`, `oidc-exchange`) as they
+are.
 
 ### The first publish
 
@@ -89,10 +147,10 @@ with:
 | ------------- | -------- | ------------------------------------------------------------------------------------------ |
 | `file`        | yes      | Path of the OpenAPI document.                                                              |
 | `api`         | yes      | The hub API, as `@account/slug`.                                                           |
-| `token`       | yes      | A skmtc.dev personal access token. Store it as a secret.                                   |
+| `token`       | no       | A skmtc.dev personal access token. Store it as a secret. Empty: sign in with OIDC.         |
 | `visibility`  | no       | `public` or `private`. Set it for the first publish only, which creates the API.           |
 | `origin-url`  | no       | A URL the hub refetches daily. No default. See [The origin URL](#the-origin-url).          |
-| `cli-version` | no       | The exact `@skmtc/cli` version, such as `0.9.60`. Empty means the version the action pins. |
+| `cli-version` | no       | The exact `@skmtc/cli` version, such as `0.10.0`. Empty means the version the action pins. |
 | `env`         | no       | The hub environment. Empty means production.                                               |
 
 ### The CLI version and its dependencies
@@ -105,8 +163,10 @@ match its hash in the lockfile.
 
 A custom `cli-version` is not locked. Deno resolves the newest dependency
 versions that match the CLI's ranges, on each runner. Those dependencies run
-while the token is readable. Set `cli-version` only to a version you trust with
-its dependencies as they are on the day of the run.
+while the token is readable. Without `token`, they can also read the OIDC
+request token and request a GitHub OIDC token for any audience. Set
+`cli-version` only to a version you trust with its dependencies as they are on
+the day of the run.
 
 ## Outputs
 

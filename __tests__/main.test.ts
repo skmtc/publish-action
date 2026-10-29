@@ -52,11 +52,31 @@ function publishCall() {
   return { command, args: args ?? [], options }
 }
 
+/**
+ * Variables the tests set. CI runs with `GITHUB_ACTIONS=true`, so each test
+ * starts with them unset and the suite restores them.
+ */
+const ENV_VARS = [
+  'SKMTC_PUBLISH_ACTION_CLI_SPECIFIER',
+  'SKMTC_HUB_TOKEN',
+  'GITHUB_ACTIONS',
+  'ACTIONS_ID_TOKEN_REQUEST_URL',
+  'ACTIONS_ID_TOKEN_REQUEST_TOKEN'
+]
+
+const OIDC_REQUEST_URL =
+  'https://run-actions-1-azure-eastus.actions.githubusercontent.com/42/idtoken/abc/def?api-version=2.0'
+
 describe('main.ts', () => {
-  const savedSpecifier = process.env.SKMTC_PUBLISH_ACTION_CLI_SPECIFIER
+  const saved = ENV_VARS.map((name): [string, string | undefined] => [
+    name,
+    process.env[name]
+  ])
 
   beforeEach(() => {
-    delete process.env.SKMTC_PUBLISH_ACTION_CLI_SPECIFIER
+    for (const name of ENV_VARS) {
+      delete process.env[name]
+    }
     core.resetSummary()
     mockInputs({ file: 'openapi.yaml', api: '@acme/pets', token: TOKEN })
     tc.find.mockReturnValue(TOOL_DIR)
@@ -70,17 +90,19 @@ describe('main.ts', () => {
 
   afterEach(() => {
     jest.resetAllMocks()
-    if (savedSpecifier === undefined) {
-      delete process.env.SKMTC_PUBLISH_ACTION_CLI_SPECIFIER
-    } else {
-      process.env.SKMTC_PUBLISH_ACTION_CLI_SPECIFIER = savedSpecifier
+    for (const [name, value] of saved) {
+      if (value === undefined) {
+        delete process.env[name]
+      } else {
+        process.env[name] = value
+      }
     }
   })
 
   it('masks the token before it reads any other input', async () => {
     await run()
 
-    expect(core.getInput.mock.calls[0]).toEqual(['token', { required: true }])
+    expect(core.getInput.mock.calls[0]).toEqual(['token'])
     expect(core.setSecret).toHaveBeenCalledWith(TOKEN)
     expect(core.setSecret.mock.invocationCallOrder[0]).toBeLessThan(
       core.getInput.mock.invocationCallOrder[1]
@@ -98,6 +120,84 @@ describe('main.ts', () => {
     expect(options?.ignoreReturnCode).toBe(true)
   })
 
+  it('allows no OIDC variables or host with a token, even in an OIDC job', async () => {
+    process.env.GITHUB_ACTIONS = 'true'
+    process.env.ACTIONS_ID_TOKEN_REQUEST_URL = OIDC_REQUEST_URL
+    process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN = 'request-token'
+
+    await run()
+
+    const { args } = publishCall()
+    expect(args).toContain(
+      '--allow-env=SKMTC_HUB_TOKEN,SKMTC_ENV,SKMTC_API_ORIGIN'
+    )
+    expect(args).toContain(
+      '--allow-net=api.skmtc.dev,api.skmtc.net,api.skmtc.co.uk'
+    )
+  })
+
+  describe('without a token', () => {
+    beforeEach(() => {
+      mockInputs({ file: 'openapi.yaml', api: '@acme/pets' })
+      process.env.GITHUB_ACTIONS = 'true'
+      process.env.ACTIONS_ID_TOKEN_REQUEST_URL = OIDC_REQUEST_URL
+      process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN = 'request-token'
+    })
+
+    it('masks nothing and does not fail on the empty input', async () => {
+      await run()
+
+      expect(core.getInput.mock.calls[0]).toEqual(['token'])
+      expect(core.setSecret).not.toHaveBeenCalled()
+      expect(core.setFailed).not.toHaveBeenCalled()
+    })
+
+    it('gives the CLI no SKMTC_HUB_TOKEN, even an inherited one', async () => {
+      process.env.SKMTC_HUB_TOKEN = 'inherited'
+
+      await run()
+
+      const { args, options } = publishCall()
+      expect(args).not.toContain('--token')
+      expect(options?.env).not.toHaveProperty('SKMTC_HUB_TOKEN')
+      expect(options?.env?.ACTIONS_ID_TOKEN_REQUEST_URL).toBe(OIDC_REQUEST_URL)
+    })
+
+    it('allows the OIDC variables and the host of the request URL', async () => {
+      await run()
+
+      const { args } = publishCall()
+      expect(args).toContain(
+        '--allow-env=SKMTC_HUB_TOKEN,SKMTC_ENV,SKMTC_API_ORIGIN,GITHUB_ACTIONS,ACTIONS_ID_TOKEN_REQUEST_URL,ACTIONS_ID_TOKEN_REQUEST_TOKEN'
+      )
+      expect(args).toContain(
+        '--allow-net=api.skmtc.dev,api.skmtc.net,api.skmtc.co.uk,run-actions-1-azure-eastus.actions.githubusercontent.com'
+      )
+    })
+
+    it('fails with the CLI missing-permission text on exit 2', async () => {
+      // A job without `id-token: write`.
+      delete process.env.ACTIONS_ID_TOKEN_REQUEST_URL
+      delete process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN
+      // CLI 0.10.0's stderr, shortened.
+      const stderr = [
+        'Error: missing required argument: --token',
+        '',
+        'Discover valid values: Running in GitHub Actions without an OIDC token. Add `permissions: id-token: write` to the job (a pull request from a fork never gets one), or run `skmtc login`, set $SKMTC_HUB_TOKEN, or pass --token.'
+      ].join('\n')
+      exec.getExecOutput.mockResolvedValue({ exitCode: 2, stdout: '', stderr })
+
+      await run()
+
+      expect(publishCall().args).toContain(
+        '--allow-net=api.skmtc.dev,api.skmtc.net,api.skmtc.co.uk'
+      )
+      expect(core.setFailed).toHaveBeenCalledWith(
+        `skmtc api publish exited with code 2 and no JSON result.\n${stderr}`
+      )
+    })
+  })
+
   it('runs the pinned CLI with the pinned Deno by absolute path', async () => {
     await run()
 
@@ -107,11 +207,11 @@ describe('main.ts', () => {
       '--minimum-dependency-age=0',
       `--lock=${LOCK}`,
       '--frozen',
-      'jsr:@skmtc/cli@0.9.60'
+      'jsr:@skmtc/cli@0.10.0'
     ])
     const { command, args } = publishCall()
     expect(command).toBe(DENO)
-    expect(args).toContain('jsr:@skmtc/cli@0.9.60')
+    expect(args).toContain('jsr:@skmtc/cli@0.10.0')
   })
 
   it('locks the default version on both deno calls', async () => {
@@ -178,7 +278,7 @@ describe('main.ts', () => {
     await run()
 
     const line = expect.stringMatching(
-      /^Installed Deno 2\.9\.8 and @skmtc\/cli 0\.9\.60 in \d+ ms \(deno cached: yes\)$/
+      /^Installed Deno 2\.9\.8 and @skmtc\/cli 0\.10\.0 in \d+ ms \(deno cached: yes\)$/
     )
     expect(core.info).toHaveBeenCalledWith(line)
     expect(core.summary.addRaw).toHaveBeenCalledWith(line, true)
@@ -191,7 +291,7 @@ describe('main.ts', () => {
 
     expect(exec.exec).not.toHaveBeenCalled()
     expect(publishCall().args).toContain('./test/fake-cli.js')
-    expect(publishCall().args).not.toContain('jsr:@skmtc/cli@0.9.60')
+    expect(publishCall().args).not.toContain('jsr:@skmtc/cli@0.10.0')
   })
 
   it('fails before installing on an invalid cli-version', async () => {
