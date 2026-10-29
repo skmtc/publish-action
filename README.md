@@ -81,7 +81,10 @@ can publish to one API.
 
 1. An admin of the API links the repository on skmtc.dev: open the API settings,
    then **Linked repositories**. The repository must be public, and the admin
-   must have push access to it.
+   must have push access to it. The link names the repository, the workflow file
+   that publishes (such as `.github/workflows/publish.yml`) and, if you want, an
+   environment. The job must run from that workflow file. If the link names an
+   environment, the job must use that environment.
 2. Give the job `permissions: { contents: read, id-token: write }`. Without
    `id-token: write`, GitHub gives the job no OIDC token, and the CLI stops with
    a message that names the permission.
@@ -98,6 +101,9 @@ Limits:
   token.
 - A custom `cli-version` older than 0.10.0 has no OIDC. Without `token`, it
   fails with that version's message for a missing token.
+- A renamed workflow file, or a job in another workflow file or environment,
+  does not match the link. The hub refuses the exchange (`oidc-exchange`, 403)
+  until an admin links the workflow file and environment the job uses.
 
 The action shows the CLI's OIDC errors (`oidc-token`, `oidc-exchange`) as they
 are.

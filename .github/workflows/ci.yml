@@ -55,7 +55,8 @@ jobs:
   # The fake CLI steps check the outputs and the arguments. The step without
   # `token` checks that the fake CLI can read the OIDC variables and reach the
   # host of the OIDC request URL. GitHub sets those variables only with
-  # `id-token: write`; no step requests an OIDC token.
+  # `id-token: write`; no step requests an OIDC token. A pull request from a
+  # fork gets no `id-token`, so it skips that step and its check.
   test-action:
     name: GitHub Actions Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -141,6 +142,9 @@ jobs:
 
       - name: Publish with the fake CLI, without token
         id: fake-oidc
+        if:
+          github.event_name == 'push' ||
+          github.event.pull_request.head.repo.full_name == github.repository
         uses: ./
         env:
           SKMTC_PUBLISH_ACTION_CLI_SPECIFIER: ./test/fake-cli.js
@@ -148,8 +152,7 @@ jobs:
           file: test/openapi.yaml
           api: '@skmtc/publish-action-test'
 
-      # The fake CLI returns the arguments it got as `revision`, after `oidc`
-      # when it signed in with OIDC.
+      # The fake CLI returns the arguments it got as `revision`.
       - name: Check the outputs
         id: check-outputs
         shell: bash
@@ -159,7 +162,6 @@ jobs:
           DEDUPED: ${{ steps.fake.outputs.deduped }}
           CREATED: ${{ steps.fake.outputs.created }}
           ORIGIN_REVISION: ${{ steps.fake-origin.outputs.revision }}
-          OIDC_REVISION: ${{ steps.fake-oidc.outputs.revision }}
         run: |
           set -x
           test "$URL" = https://skmtc.dev/@skmtc/publish-action-test
@@ -167,4 +169,17 @@ jobs:
           test "$CREATED" = false
           test "$REVISION" = 'api publish test/openapi.yaml --api @skmtc/publish-action-test --json'
           test "$ORIGIN_REVISION" = 'api publish test/openapi.yaml --api @skmtc/publish-action-test --json --origin-url https://example.com/openapi.yaml'
+
+      # The fake CLI puts `oidc` before the arguments when it signed in with
+      # OIDC.
+      - name: Check the output without token
+        id: check-oidc-output
+        if:
+          github.event_name == 'push' ||
+          github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        env:
+          OIDC_REVISION: ${{ steps.fake-oidc.outputs.revision }}
+        run: |
+          set -x
           test "$OIDC_REVISION" = 'oidc api publish test/openapi.yaml --api @skmtc/publish-action-test --json'
