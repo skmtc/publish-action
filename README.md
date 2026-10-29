@@ -95,6 +95,19 @@ with:
 | `cli-version` | no       | The exact `@skmtc/cli` version, such as `0.9.60`. Empty means the version the action pins. |
 | `env`         | no       | The hub environment. Empty means production.                                               |
 
+### The CLI version and its dependencies
+
+`@skmtc/cli` declares its dependencies as version ranges. For the version the
+action pins, the action ships a Deno lockfile, `cli.lock`, and runs `deno cache`
+and `deno run` with `--lock=<action dir>/cli.lock --frozen`. Each run then gets
+the same dependency versions, and Deno stops when a downloaded file does not
+match its hash in the lockfile.
+
+A custom `cli-version` is not locked. Deno resolves the newest dependency
+versions that match the CLI's ranges, on each runner. Those dependencies run
+while the token is readable. Set `cli-version` only to a version you trust with
+its dependencies as they are on the day of the run.
+
 ## Outputs
 
 | Output     | Description                                                          |
@@ -136,7 +149,19 @@ npm run bundle
 Commit `dist/` with each change to `src/`. The `Check Transpiled JavaScript`
 workflow fails when `dist/` does not match the source.
 
+When you change `DEFAULT_CLI_VERSION` in `src/args.ts` or `DENO_VERSION` in
+`src/install.ts`, write the lockfile again and commit it:
+
+```sh
+npm run cli-lock
+```
+
+The script needs `deno` on `PATH`, at the version in `DENO_VERSION` in
+`src/install.ts`. The `cli.lock` test fails when `cli.lock` does not lock
+`DEFAULT_CLI_VERSION`.
+
 ## Releases
 
 Publish a GitHub release with a tag such as `v1.2.3`. The `Move Major Tag`
-workflow then moves `v1` to that release. Prereleases do not move the tag.
+workflow then moves `v1` to that release. A prerelease does not move the tag
+until you promote it to a full release.

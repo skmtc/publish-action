@@ -48,9 +48,10 @@ jobs:
         id: npm-ci-test
         run: npm run ci-test
 
-  # Runs the action itself. The first two steps use the real CLI on a file that
-  # does not exist: a real install and a real `file-unreadable` result, with no
-  # hub call. Their logs hold the cold and warm install times for the README.
+  # Runs the action itself. The `cold`, `warm` and `check-file-unreadable`
+  # steps use the real CLI, locked by cli.lock, on a file that does not exist: a
+  # real install and a real `file-unreadable` result, with no hub call. The cold
+  # and warm logs hold the install times for the README.
   # The fake CLI steps check the outputs and the arguments.
   test-action:
     name: GitHub Actions Test (${{ matrix.os }})
@@ -96,6 +97,19 @@ jobs:
         run: |
           test "$COLD" = failure
           test "$WARM" = failure
+
+      # The two steps above pass on any failure. This one runs the bundle
+      # directly and checks the error code. The redirect stops the runner from
+      # processing the `::error` command.
+      - name: Check that the failure is file-unreadable
+        id: check-file-unreadable
+        shell: bash
+        run: |
+          INPUT_FILE=does-not-exist.yaml INPUT_API=@skmtc/publish-action-test INPUT_TOKEN=dummy node dist/index.js > out.txt || true
+          if ! grep -q 'title=skmtc api publish%3A file-unreadable' out.txt; then
+            cat out.txt
+            exit 1
+          fi
 
       - name: Publish with the fake CLI, without origin-url
         id: fake

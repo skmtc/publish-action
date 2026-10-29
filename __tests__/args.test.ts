@@ -1,6 +1,8 @@
 /**
  * Unit tests for the input mapping, src/args.ts
  */
+import * as path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { jest } from '@jest/globals'
 import * as core from '../__fixtures__/core.js'
 
@@ -9,6 +11,7 @@ jest.unstable_mockModule('@actions/core', () => core)
 const {
   cacheArgs,
   childEnv,
+  CLI_LOCK_PATH,
   cliSpecifier,
   DEFAULT_CLI_VERSION,
   publishArgs,
@@ -24,6 +27,8 @@ const baseInputs = {
   env: ''
 }
 
+const LOCK_FLAGS = ['--lock=/action/cli.lock', '--frozen']
+
 function mockInputs(inputs: Record<string, string>): void {
   core.getInput.mockImplementation((name) => inputs[name] ?? '')
 }
@@ -35,7 +40,7 @@ describe('args.ts', () => {
 
   describe('publishArgs', () => {
     it('builds the deno run command with only the required inputs', () => {
-      expect(publishArgs(baseInputs, 'jsr:@skmtc/cli@0.9.60')).toEqual([
+      expect(publishArgs(baseInputs, 'jsr:@skmtc/cli@0.9.60', [])).toEqual([
         'run',
         '--no-config',
         '--minimum-dependency-age=0',
@@ -54,9 +59,21 @@ describe('args.ts', () => {
     })
 
     it('passes no --origin-url when origin-url is empty', () => {
-      const args = publishArgs(baseInputs, 'jsr:@skmtc/cli@0.9.60')
+      const args = publishArgs(baseInputs, 'jsr:@skmtc/cli@0.9.60', [])
 
       expect(args).not.toContain('--origin-url')
+    })
+
+    it('puts the lock flags after the shared deno flags', () => {
+      const args = publishArgs(baseInputs, 'jsr:@skmtc/cli@0.9.60', LOCK_FLAGS)
+
+      expect(args.slice(0, 6)).toEqual([
+        'run',
+        '--no-config',
+        '--minimum-dependency-age=0',
+        ...LOCK_FLAGS,
+        '--no-prompt'
+      ])
     })
 
     it('appends the optional flags when their inputs are set', () => {
@@ -67,7 +84,8 @@ describe('args.ts', () => {
           originUrl: 'https://github.com/acme/pets/blob/main/openapi.yaml',
           env: 'staging'
         },
-        'jsr:@skmtc/cli@0.9.60'
+        'jsr:@skmtc/cli@0.9.60',
+        []
       )
 
       expect(args.slice(-6)).toEqual([
@@ -81,35 +99,70 @@ describe('args.ts', () => {
     })
 
     it('never passes --token', () => {
-      expect(publishArgs(baseInputs, 'x')).not.toContain('--token')
+      expect(publishArgs(baseInputs, 'x', [])).not.toContain('--token')
     })
   })
 
   describe('cacheArgs', () => {
     it('caches the specifier without config and without the age gate', () => {
-      expect(cacheArgs('jsr:@skmtc/cli@0.9.60')).toEqual([
+      expect(cacheArgs('jsr:@skmtc/cli@0.9.60', [])).toEqual([
         'cache',
         '--no-config',
         '--minimum-dependency-age=0',
         'jsr:@skmtc/cli@0.9.60'
       ])
     })
+
+    it('puts the lock flags before the specifier', () => {
+      expect(cacheArgs('jsr:@skmtc/cli@0.9.60', LOCK_FLAGS)).toEqual([
+        'cache',
+        '--no-config',
+        '--minimum-dependency-age=0',
+        ...LOCK_FLAGS,
+        'jsr:@skmtc/cli@0.9.60'
+      ])
+    })
   })
 
   describe('cliSpecifier', () => {
-    it('pins the jsr specifier to the version', () => {
+    it('pins the jsr specifier to a custom version, unlocked', () => {
       expect(cliSpecifier('1.2.3', {})).toEqual({
         specifier: 'jsr:@skmtc/cli@1.2.3',
-        overridden: false
+        overridden: false,
+        lockFlags: []
       })
     })
 
-    it('uses the test hook when it is set', () => {
+    it('locks the default version with the action lockfile', () => {
+      expect(cliSpecifier(DEFAULT_CLI_VERSION, {})).toEqual({
+        specifier: `jsr:@skmtc/cli@${DEFAULT_CLI_VERSION}`,
+        overridden: false,
+        lockFlags: [`--lock=${CLI_LOCK_PATH}`, '--frozen']
+      })
+    })
+
+    it('uses the test hook when it is set, unlocked', () => {
       expect(
-        cliSpecifier('1.2.3', {
+        cliSpecifier(DEFAULT_CLI_VERSION, {
           SKMTC_PUBLISH_ACTION_CLI_SPECIFIER: './test/fake-cli.js'
         })
-      ).toEqual({ specifier: './test/fake-cli.js', overridden: true })
+      ).toEqual({
+        specifier: './test/fake-cli.js',
+        overridden: true,
+        lockFlags: []
+      })
+    })
+  })
+
+  describe('CLI_LOCK_PATH', () => {
+    it('is cli.lock at the action root, not in the working directory', () => {
+      expect(CLI_LOCK_PATH).toBe(
+        path.join(
+          path.dirname(fileURLToPath(import.meta.url)),
+          '..',
+          'cli.lock'
+        )
+      )
     })
   })
 

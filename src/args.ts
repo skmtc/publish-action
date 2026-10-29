@@ -1,7 +1,20 @@
+import * as path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import * as core from '@actions/core'
 
 /** The `@skmtc/cli` version the action installs when `cli-version` is empty. */
 export const DEFAULT_CLI_VERSION = '0.9.60'
+
+/**
+ * The Deno lockfile for {@link DEFAULT_CLI_VERSION}, at the root of the action.
+ * `src/` and `dist/` both sit one level below it, so the path does not depend
+ * on the working directory (the user's checkout). `npm run cli-lock` writes it.
+ */
+export const CLI_LOCK_PATH = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'cli.lock'
+)
 
 /**
  * Undocumented test hook: a module specifier that replaces
@@ -52,33 +65,49 @@ export function readInputs(): Inputs {
   }
 }
 
-/** The module specifier of the CLI, or the test hook when it is set. */
+/**
+ * The module specifier of the CLI, or the test hook when it is set, and the
+ * lock flags for it. Only {@link DEFAULT_CLI_VERSION} has a lockfile: a custom
+ * `cli-version` and the test hook run unlocked.
+ */
 export function cliSpecifier(
   cliVersion: string,
   env: NodeJS.ProcessEnv
-): { specifier: string; overridden: boolean } {
+): { specifier: string; overridden: boolean; lockFlags: string[] } {
   const override = env[CLI_SPECIFIER_ENV]
 
   if (override) {
-    return { specifier: override, overridden: true }
+    return { specifier: override, overridden: true, lockFlags: [] }
   }
 
-  return { specifier: `jsr:@skmtc/cli@${cliVersion}`, overridden: false }
+  return {
+    specifier: `jsr:@skmtc/cli@${cliVersion}`,
+    overridden: false,
+    lockFlags:
+      cliVersion === DEFAULT_CLI_VERSION
+        ? [`--lock=${CLI_LOCK_PATH}`, '--frozen']
+        : []
+  }
 }
 
 /** The arguments of `deno cache` for the CLI. */
-export function cacheArgs(specifier: string): string[] {
-  return ['cache', ...DENO_FLAGS, specifier]
+export function cacheArgs(specifier: string, lockFlags: string[]): string[] {
+  return ['cache', ...DENO_FLAGS, ...lockFlags, specifier]
 }
 
 /**
  * The arguments of `deno run ... api publish`. The token is not one of them:
  * it reaches the CLI as `SKMTC_HUB_TOKEN` (see {@link childEnv}).
  */
-export function publishArgs(inputs: Inputs, specifier: string): string[] {
+export function publishArgs(
+  inputs: Inputs,
+  specifier: string,
+  lockFlags: string[]
+): string[] {
   return [
     'run',
     ...DENO_FLAGS,
+    ...lockFlags,
     '--no-prompt',
     `--allow-env=${CLI_ENV_VARS.join(',')}`,
     `--allow-read=${inputs.file}`,

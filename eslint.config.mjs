@@ -52,6 +52,7 @@ export default [
             'eslint.config.mjs',
             'jest.config.js',
             'rollup.config.ts',
+            'script/*.mjs',
             'test/*.js'
           ],
           // The default of 8 is less than the files above match.

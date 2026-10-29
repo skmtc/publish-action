@@ -1,12 +1,13 @@
-# Moves the major tag (v1, v2, ...) to a published release, so that
-# `uses: skmtc/publish-action@v1` runs the latest v1.x.y. Prereleases do not
-# move it.
+# Moves the major tag (v1, v2, ...) to a release, so that
+# `uses: skmtc/publish-action@v1` runs the latest v1.x.y. GitHub sends
+# `released` for a full release and for a prerelease that is promoted to a full
+# release, never for a prerelease.
 name: Move Major Tag
 
 on:
   release:
     types:
-      - published
+      - released
 
 permissions:
   contents: write
@@ -14,7 +15,6 @@ permissions:
 jobs:
   move-major-tag:
     name: Move the major tag
-    if: ${{ !github.event.release.prerelease }}
     runs-on: ubuntu-latest
 
     steps:
