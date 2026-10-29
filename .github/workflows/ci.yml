@@ -48,10 +48,10 @@ jobs:
         id: npm-ci-test
         run: npm run ci-test
 
-  # Runs the action itself. The first three steps use the real CLI, locked by
-  # cli.lock, on a file that does not exist: a real install and a real
-  # `file-unreadable` result, with no hub call. The cold and warm logs hold the
-  # install times for the README.
+  # Runs the action itself. The `cold`, `warm` and `check-file-unreadable`
+  # steps use the real CLI, locked by cli.lock, on a file that does not exist: a
+  # real install and a real `file-unreadable` result, with no hub call. The cold
+  # and warm logs hold the install times for the README.
   # The fake CLI steps check the outputs and the arguments.
   test-action:
     name: GitHub Actions Test (${{ matrix.os }})
