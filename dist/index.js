@@ -34410,6 +34410,12 @@ async function run() {
         if (token) {
             setSecret(token);
         }
+        else {
+            info('token is empty: the CLI signs in with GitHub Actions OIDC.');
+            if (process.env.SKMTC_HUB_TOKEN) {
+                info('The action ignores SKMTC_HUB_TOKEN in the environment; set `token`.');
+            }
+        }
         const inputs = readInputs();
         const { specifier, overridden, lockFlags } = cliSpecifier(inputs.cliVersion, process.env);
         const started = Date.now();
