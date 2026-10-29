@@ -30830,6 +30830,13 @@ function info(message) {
 /** The `@skmtc/cli` version the action installs when `cli-version` is empty. */
 const DEFAULT_CLI_VERSION = '0.9.60';
 /**
+ * The Deno version the action downloads. The action never uses a PATH deno.
+ * It sits here, not in install.ts, so that `npm run cli-lock` can import it:
+ * Node strips the types of this file, but cannot resolve install.ts's
+ * `./args.js` import.
+ */
+const DENO_VERSION = '2.9.8';
+/**
  * The Deno lockfile for {@link DEFAULT_CLI_VERSION}, at the root of the action.
  * `src/` and `dist/` both sit one level below it, so the path does not depend
  * on the working directory (the user's checkout). `npm run cli-lock` writes it.
@@ -34172,8 +34179,6 @@ function _getGlobal(key, defaultValue) {
     return value !== undefined ? value : defaultValue;
 }
 
-/** The Deno version the action downloads. The action never uses a PATH deno. */
-const DENO_VERSION = '2.9.8';
 /**
  * Finds the pinned Deno in the tool cache, or downloads and caches it.
  * Logic from denoland/setup-deno `src/install.ts`, without `addPath`.

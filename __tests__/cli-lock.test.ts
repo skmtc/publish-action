@@ -11,6 +11,7 @@ jest.unstable_mockModule('@actions/core', () => core)
 const { CLI_LOCK_PATH, DEFAULT_CLI_VERSION } = await import('../src/args.js')
 
 type DenoLock = {
+  version: unknown
   specifiers: Record<string, unknown>
   jsr: Record<string, unknown>
 }
@@ -26,11 +27,17 @@ function readLock(): DenoLock {
     throw new Error(`${CLI_LOCK_PATH} has no specifiers and jsr sections`)
   }
 
-  return { specifiers: lock.specifiers, jsr: lock.jsr }
+  return { version: lock.version, specifiers: lock.specifiers, jsr: lock.jsr }
 }
 
 describe('cli.lock', () => {
   const lock = readLock()
+
+  // The lockfile format of Deno 2.9.8 (DENO_VERSION). Another version means
+  // another deno wrote the lock.
+  it('has the lockfile format of the pinned Deno', () => {
+    expect(lock.version).toBe('5')
+  })
 
   it('resolves the default CLI specifier to the default version', () => {
     expect(lock.specifiers[`jsr:@skmtc/cli@${DEFAULT_CLI_VERSION}`]).toBe(

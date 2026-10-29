@@ -11,8 +11,8 @@ jest.unstable_mockModule('@actions/core', () => core)
 jest.unstable_mockModule('@actions/exec', () => exec)
 jest.unstable_mockModule('@actions/tool-cache', () => tc)
 
-const { cacheCli, DENO_VERSION, installDeno, zipName } =
-  await import('../src/install.js')
+const { DENO_VERSION } = await import('../src/args.js')
+const { cacheCli, installDeno, zipName } = await import('../src/install.js')
 
 describe('install.ts', () => {
   afterEach(() => {

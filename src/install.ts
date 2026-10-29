@@ -2,10 +2,7 @@ import * as path from 'node:path'
 import * as core from '@actions/core'
 import * as exec from '@actions/exec'
 import * as tc from '@actions/tool-cache'
-import { cacheArgs } from './args.js'
-
-/** The Deno version the action downloads. The action never uses a PATH deno. */
-export const DENO_VERSION = '2.9.8'
+import { cacheArgs, DENO_VERSION } from './args.js'
 
 /**
  * Finds the pinned Deno in the tool cache, or downloads and caches it.

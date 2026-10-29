@@ -1,7 +1,8 @@
 # Moves the major tag (v1, v2, ...) to a release, so that
 # `uses: skmtc/publish-action@v1` runs the latest v1.x.y. GitHub sends
 # `released` for a full release and for a prerelease that is promoted to a full
-# release, never for a prerelease.
+# release, never for a prerelease. A release that is not the highest of its
+# major (an older prerelease promoted late) leaves the major tag where it is.
 name: Move Major Tag
 
 on:
@@ -21,18 +22,15 @@ jobs:
       - name: Checkout
         id: checkout
         uses: actions/checkout@v6
+        with:
+          # Every tag, to find the highest release of the major.
+          fetch-depth: 0
 
       - name: Move the major tag
         id: move
         env:
           TAG_NAME: ${{ github.event.release.tag_name }}
         run: |
-          major="${TAG_NAME%%.*}"
-          if ! printf '%s' "$major" | grep -Eq '^v[0-9]+$'; then
-            echo "::error::Release tag $TAG_NAME does not start with vMAJOR."
-            exit 1
-          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git tag -fa "$major" -m "Update $major tag" "$TAG_NAME^{commit}"
-          git push origin "$major" --force
+          sh script/major-tag.sh "$TAG_NAME"
