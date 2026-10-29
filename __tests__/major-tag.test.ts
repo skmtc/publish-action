@@ -3,11 +3,20 @@
  * a git repository with fixture tags and a bare origin.
  */
 import { execFileSync, spawnSync } from 'node:child_process'
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import * as path from 'node:path'
 
 const SCRIPT = path.resolve('script/major-tag.sh')
+
+/** The temporary directories of the tests, deleted after each test. */
+const dirs: string[] = []
+
+afterEach(() => {
+  for (const dir of dirs.splice(0)) {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
 
 function git(cwd: string, args: string[]): string {
   return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim()
@@ -19,6 +28,7 @@ function git(cwd: string, args: string[]): string {
  */
 function repoWithTags(tags: string[]): { work: string; origin: string } {
   const dir = mkdtempSync(path.join(tmpdir(), 'major-tag-'))
+  dirs.push(dir)
   const origin = path.join(dir, 'origin.git')
   const work = path.join(dir, 'work')
 

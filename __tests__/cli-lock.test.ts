@@ -33,8 +33,9 @@ function readLock(): DenoLock {
 describe('cli.lock', () => {
   const lock = readLock()
 
-  // The lockfile format of Deno 2.9.8 (DENO_VERSION). Another version means
-  // another deno wrote the lock.
+  // Deno 2.9.8 (DENO_VERSION) writes lockfile format 5. Another format means a
+  // deno of another format wrote the lock; Deno versions that share format 5
+  // pass. Update the value with DENO_VERSION.
   it('has the lockfile format of the pinned Deno', () => {
     expect(lock.version).toBe('5')
   })

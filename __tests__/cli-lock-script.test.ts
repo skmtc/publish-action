@@ -1,7 +1,13 @@
 /**
  * Unit tests for the lock script, script/cli-lock.mjs, with a fake deno.
  */
-import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import * as path from 'node:path'
 import { jest } from '@jest/globals'
@@ -22,23 +28,21 @@ function fakeDeno(
   version: string,
   { written, cacheFails }: { written: string; cacheFails: boolean }
 ) {
-  return jest.fn((args: string[]) => {
-    if (args[0] === '--version') {
-      return `deno ${version} (stable, release, x86_64-unknown-linux-gnu)\nv8 15.0\n`
-    }
+  return {
+    denoVersion: () =>
+      `deno ${version} (stable, release, x86_64-unknown-linux-gnu)\nv8 15.0\n`,
+    denoCache: jest.fn((args: string[]) => {
+      const lockFlag = args.find((arg) => arg.startsWith('--lock='))
 
-    const lockFlag = args.find((arg) => arg.startsWith('--lock='))
+      if (lockFlag) {
+        writeFileSync(lockFlag.slice('--lock='.length), written)
+      }
 
-    if (lockFlag) {
-      writeFileSync(lockFlag.slice('--lock='.length), written)
-    }
-
-    if (cacheFails) {
-      throw new Error('deno cache failed')
-    }
-
-    return ''
-  })
+      if (cacheFails) {
+        throw new Error('deno cache failed')
+      }
+    })
+  }
 }
 
 describe('writeCliLock', () => {
@@ -51,15 +55,19 @@ describe('writeCliLock', () => {
     writeFileSync(lockPath, 'old lock')
   })
 
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true })
+  })
+
   it('writes the lock when deno cache succeeds', () => {
     const deno = fakeDeno(DENO_VERSION, {
       written: 'new lock',
       cacheFails: false
     })
 
-    writeCliLock({ deno, lockPath, specifier: SPECIFIER })
+    writeCliLock({ ...deno, lockPath, specifier: SPECIFIER })
 
-    expect(deno).toHaveBeenLastCalledWith(
+    expect(deno.denoCache).toHaveBeenCalledWith(
       expect.arrayContaining(['cache', SPECIFIER])
     )
     expect(readFileSync(lockPath, 'utf8')).toBe('new lock')
@@ -73,7 +81,7 @@ describe('writeCliLock', () => {
     })
 
     expect(() =>
-      writeCliLock({ deno, lockPath, specifier: SPECIFIER })
+      writeCliLock({ ...deno, lockPath, specifier: SPECIFIER })
     ).toThrow('deno cache failed')
     expect(readFileSync(lockPath, 'utf8')).toBe('old lock')
     expect(readdirSync(dir)).toEqual(['cli.lock'])
@@ -83,9 +91,9 @@ describe('writeCliLock', () => {
     const deno = fakeDeno('2.0.0', { written: 'new lock', cacheFails: false })
 
     expect(() =>
-      writeCliLock({ deno, lockPath, specifier: SPECIFIER })
+      writeCliLock({ ...deno, lockPath, specifier: SPECIFIER })
     ).toThrow(`deno on PATH is 2.0.0, not ${DENO_VERSION}.`)
-    expect(deno).toHaveBeenCalledTimes(1)
+    expect(deno.denoCache).not.toHaveBeenCalled()
     expect(readFileSync(lockPath, 'utf8')).toBe('old lock')
   })
 })

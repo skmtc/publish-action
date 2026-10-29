@@ -5,7 +5,7 @@
 // Node strips the types of src/args.ts when it imports it.
 
 import { execFileSync } from 'node:child_process'
-import { renameSync, rmSync } from 'node:fs'
+import { realpathSync, renameSync, rmSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import {
   cacheArgs,
@@ -21,15 +21,17 @@ import {
  * succeeds, so a failed fetch leaves an existing lockfile as it was.
  *
  * @param {object} options
- * @param {(args: string[]) => string} options.deno Runs deno with the
- *   arguments and returns its stdout. Throws when deno fails.
+ * @param {() => string} options.denoVersion Returns the stdout of
+ *   `deno --version`.
+ * @param {(args: string[]) => void} options.denoCache Runs deno with the
+ *   arguments. Throws when deno fails.
  * @param {string} options.lockPath The lockfile to write.
  * @param {string} options.specifier The module specifier to lock.
  * @throws When `deno --version` is not {@link DENO_VERSION}, or `deno cache`
  *   fails.
  */
-export function writeCliLock({ deno, lockPath, specifier }) {
-  const version = /^deno (\S+)/.exec(deno(['--version']))?.[1]
+export function writeCliLock({ denoVersion, denoCache, lockPath, specifier }) {
+  const version = /^deno (\S+)/.exec(denoVersion())?.[1]
 
   if (version !== DENO_VERSION) {
     throw new Error(
@@ -42,7 +44,7 @@ export function writeCliLock({ deno, lockPath, specifier }) {
   rmSync(tempPath, { force: true })
 
   try {
-    deno(cacheArgs(specifier, [`--lock=${tempPath}`]))
+    denoCache(cacheArgs(specifier, [`--lock=${tempPath}`]))
   } catch (error) {
     rmSync(tempPath, { force: true })
     throw error
@@ -51,16 +53,20 @@ export function writeCliLock({ deno, lockPath, specifier }) {
   renameSync(tempPath, lockPath)
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// Node resolves symlinks in import.meta.url, not in argv[1].
+if (realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const { specifier } = cliSpecifier(DEFAULT_CLI_VERSION, {})
 
   try {
     writeCliLock({
-      deno: (args) =>
-        execFileSync('deno', args, {
+      denoVersion: () =>
+        execFileSync('deno', ['--version'], {
           encoding: 'utf8',
           stdio: ['inherit', 'pipe', 'inherit']
         }),
+      denoCache: (args) => {
+        execFileSync('deno', args, { stdio: 'inherit' })
+      },
       lockPath: CLI_LOCK_PATH,
       specifier
     })

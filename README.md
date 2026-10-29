@@ -159,7 +159,8 @@ npm run cli-lock
 The script needs `deno` on `PATH`, at the version in `DENO_VERSION`. It stops
 when the versions differ. When `deno cache` fails, the script keeps the old
 `cli.lock`. The `cli.lock` test fails when `cli.lock` does not lock
-`DEFAULT_CLI_VERSION`, or has a lockfile format other than Deno 2.9.8's.
+`DEFAULT_CLI_VERSION`, or has a lockfile format other than the one Deno 2.9.8
+writes (`5`).
 
 ## Releases
 

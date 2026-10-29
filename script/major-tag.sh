@@ -22,8 +22,10 @@ if ! git rev-parse -q --verify "refs/tags/$tag_name" > /dev/null; then
   exit 1
 fi
 
-# versionsort.suffix=- sorts v1.1.0-rc1 before v1.1.0.
-highest="$(git -c versionsort.suffix=- tag --list "$major.*" --sort=-v:refname | head -n 1)"
+# versionsort.suffix=- sorts v1.1.0-rc1 before v1.1.0. No pipeline, so that
+# set -e stops the script when git fails.
+tags="$(git -c versionsort.suffix=- tag --list "$major.*" --sort=-v:refname)"
+highest="$(printf '%s\n' "$tags" | head -n 1)"
 
 if [ "$tag_name" != "$highest" ]; then
   echo "::notice::Release $tag_name is not the highest $major release ($highest), so $major does not move."
