@@ -44,8 +44,8 @@ Pin `uses:` to a full commit SHA, not to a tag: a tag can move, a SHA cannot.
 See
 [Using third-party actions](https://docs.github.com/en/actions/reference/security/secure-use#using-third-party-actions).
 
-For a public repository that is a linked repository of the API, you can publish
-without a token. Give the job `id-token: write` and remove `token`:
+For a repository that is a linked repository of the API, you can publish without
+a token. Give the job `id-token: write` and remove `token`:
 
 ```yaml
 jobs:
@@ -82,19 +82,19 @@ It ignores `SKMTC_HUB_TOKEN` in the job's `env`, and it logs a line when it
 does.
 
 1. An admin of the API links the repository on skmtc.dev: open the API settings,
-   then **Linked repositories**. The repository must be public, and the admin
-   must have push access to it. The link names the repository, the workflow file
-   that publishes (such as `.github/workflows/publish.yml`) and, if you want, an
-   environment. The job must run from that workflow file. If the link names an
-   environment, the job must use that environment.
+   then **Linked repositories**. A public or a private repository can be linked.
+   skmtc.dev does not look up the repository, so check its name. The first run
+   of the workflow in the repository confirms the link. The link names the
+   repository, the workflow file that publishes (such as
+   `.github/workflows/publish.yml`) and, if you want, an environment. The job
+   must run from that workflow file. If the link names an environment, the job
+   must use that environment.
 2. Give the job `permissions: { contents: read, id-token: write }`. Without
    `id-token: write`, GitHub gives the job no OIDC token, and the CLI stops with
    a message that names the permission.
 
 Limits:
 
-- OIDC works only for a public repository. For a private repository, set `token`
-  to a personal access token.
 - OIDC cannot create an API. The first publish of a new API needs a personal
   access token in `token`, or a publish from your machine after `skmtc login`.
   See [The first publish](#the-first-publish).
@@ -106,6 +106,9 @@ Limits:
 - A renamed workflow file, or a job in another workflow file or environment,
   does not match the link. The hub refuses the exchange (`oidc-exchange`, 403)
   until an admin links the workflow file and environment the job uses.
+- A repository renamed before its first run does not match the link. Remove the
+  link and add it again. After the first run a rename is fine: the hub compares
+  repository ids.
 
 The action shows the CLI's OIDC errors (`oidc-token`, `oidc-exchange`) as they
 are.
