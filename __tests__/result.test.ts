@@ -9,7 +9,7 @@ jest.unstable_mockModule('@actions/core', () => core)
 
 const { parseResult, report } = await import('../src/result.js')
 
-const installLine = 'Installed Deno 2.9.8 and @skmtc/cli 0.9.60 in 10 ms'
+const installLine = 'Installed Deno 2.9.8 and @skmtc/cli 0.10.0 in 10 ms'
 
 const published = {
   type: 'published',
@@ -183,6 +183,31 @@ describe('result.ts', () => {
         ['network', 'cannot reach the hub', '-']
       ])
     })
+
+    it.each([
+      ['oidc-token', "GitHub's OIDC provider answered 500: upstream error"],
+      [
+        'oidc-exchange',
+        'No linked repository of @acme/pets matches this workflow run, or the API does not exist yet.'
+      ]
+    ])(
+      'passes the %s text through unchanged, without the file',
+      async (code, message) => {
+        await report(
+          cliOutput(1, { type: 'failed', code, message, requestId: 'req-3' }),
+          'openapi.yaml',
+          installLine
+        )
+
+        expect(core.error).toHaveBeenCalledWith(
+          `${message}\nRequest id: req-3`,
+          { title: `skmtc api publish: ${code}` }
+        )
+        expect(core.setFailed).toHaveBeenCalledWith(
+          `skmtc api publish failed: ${code}: ${message}`
+        )
+      }
+    )
 
     it('fails with the CLI message when the summary write throws', async () => {
       core.summary.write.mockRejectedValue(new Error('no GITHUB_STEP_SUMMARY'))

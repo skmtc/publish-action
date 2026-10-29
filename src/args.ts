@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import * as core from '@actions/core'
 
 /** The `@skmtc/cli` version the action installs when `cli-version` is empty. */
-export const DEFAULT_CLI_VERSION = '0.9.60'
+export const DEFAULT_CLI_VERSION = '0.10.0'
 
 /**
  * The Deno version the action downloads. The action never uses a PATH deno.
@@ -35,6 +35,19 @@ const HUB_HOSTS = ['api.skmtc.dev', 'api.skmtc.net', 'api.skmtc.co.uk']
 
 /** The environment variables the CLI reads. */
 const CLI_ENV_VARS = ['SKMTC_HUB_TOKEN', 'SKMTC_ENV', 'SKMTC_API_ORIGIN']
+
+/**
+ * The variable that holds GitHub's OIDC token endpoint. GitHub sets it, and
+ * `ACTIONS_ID_TOKEN_REQUEST_TOKEN`, only when the job has `id-token: write`.
+ */
+const OIDC_REQUEST_URL_VAR = 'ACTIONS_ID_TOKEN_REQUEST_URL'
+
+/** The environment variables the CLI reads to sign in with OIDC. */
+const OIDC_ENV_VARS = [
+  'GITHUB_ACTIONS',
+  OIDC_REQUEST_URL_VAR,
+  'ACTIONS_ID_TOKEN_REQUEST_TOKEN'
+]
 
 const CLI_VERSION_PATTERN = /^\d+\.\d+\.\d+$/
 
@@ -106,20 +119,29 @@ export function cacheArgs(specifier: string, lockFlags: string[]): string[] {
 /**
  * The arguments of `deno run ... api publish`. The token is not one of them:
  * it reaches the CLI as `SKMTC_HUB_TOKEN` (see {@link childEnv}).
+ *
+ * When the token is empty, the CLI signs in with GitHub Actions OIDC. Only
+ * then may it read the OIDC variables and reach the host of the OIDC token
+ * endpoint, read from `env`.
  */
 export function publishArgs(
   inputs: Inputs,
   specifier: string,
-  lockFlags: string[]
+  lockFlags: string[],
+  token: string,
+  env: NodeJS.ProcessEnv
 ): string[] {
+  const envVars = token ? CLI_ENV_VARS : [...CLI_ENV_VARS, ...OIDC_ENV_VARS]
+  const hosts = token ? HUB_HOSTS : [...HUB_HOSTS, ...oidcHosts(env)]
+
   return [
     'run',
     ...DENO_FLAGS,
     ...lockFlags,
     '--no-prompt',
-    `--allow-env=${CLI_ENV_VARS.join(',')}`,
+    `--allow-env=${envVars.join(',')}`,
     `--allow-read=${inputs.file}`,
-    `--allow-net=${HUB_HOSTS.join(',')}`,
+    `--allow-net=${hosts.join(',')}`,
     specifier,
     'api',
     'publish',
@@ -134,22 +156,38 @@ export function publishArgs(
 }
 
 /**
+ * The host of the OIDC token endpoint, or nothing when the variable is unset
+ * or not a URL.
+ */
+function oidcHosts(env: NodeJS.ProcessEnv): string[] {
+  const requestUrl = env[OIDC_REQUEST_URL_VAR]
+
+  if (!requestUrl || !URL.canParse(requestUrl)) {
+    return []
+  }
+
+  return [new URL(requestUrl).host]
+}
+
+/**
  * The environment of the CLI process. `@actions/exec` replaces the child's
  * environment with this object, so it carries the whole parent environment.
  * `NO_COLOR` keeps Deno's crash output, which reaches annotations, free of
- * escape codes.
+ * escape codes. An empty token sets no `SKMTC_HUB_TOKEN` and drops an
+ * inherited one, so that the CLI signs in with OIDC.
  */
 export function childEnv(
   env: NodeJS.ProcessEnv,
   token: string
 ): Record<string, string> {
   const defined = Object.entries(env).filter(
-    (entry): entry is [string, string] => entry[1] !== undefined
+    (entry): entry is [string, string] =>
+      entry[1] !== undefined && entry[0] !== 'SKMTC_HUB_TOKEN'
   )
 
   return {
     ...Object.fromEntries(defined),
     NO_COLOR: '1',
-    SKMTC_HUB_TOKEN: token
+    ...(token ? { SKMTC_HUB_TOKEN: token } : {})
   }
 }

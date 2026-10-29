@@ -15,8 +15,11 @@ inputs:
     description: The hub API, as @account/slug.
     required: true
   token:
-    description: A skmtc.dev personal access token. Store it as a secret.
-    required: true
+    description:
+      'A skmtc.dev personal access token. Store it as a secret. Empty: the CLI
+      signs in with GitHub Actions OIDC. The repository must be a linked
+      repository of the API.'
+    required: false
   visibility:
     description:
       public or private. Set it only for the first publish, which creates the
@@ -29,7 +32,7 @@ inputs:
     required: false
   cli-version:
     description:
-      The exact @skmtc/cli version to run, such as 0.9.60. Empty means the
+      The exact @skmtc/cli version to run, such as 0.10.0. Empty means the
       version the action pins.
     required: false
   env:
