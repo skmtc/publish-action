@@ -1,11 +1,14 @@
 /**
  * Unit tests for the lock script, script/cli-lock.mjs, with a fake deno.
  */
+import { spawnSync } from 'node:child_process'
 import {
+  chmodSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync
 } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -15,7 +18,7 @@ import * as core from '../__fixtures__/core.js'
 
 jest.unstable_mockModule('@actions/core', () => core)
 
-const { DENO_VERSION } = await import('../src/args.js')
+const { CLI_LOCK_PATH, DENO_VERSION } = await import('../src/args.js')
 const { writeCliLock } = await import('../script/cli-lock.mjs')
 
 const SPECIFIER = 'jsr:@skmtc/cli@0.0.1'
@@ -95,5 +98,47 @@ describe('writeCliLock', () => {
     ).toThrow(`deno on PATH is 2.0.0, not ${DENO_VERSION}.`)
     expect(deno.denoCache).not.toHaveBeenCalled()
     expect(readFileSync(lockPath, 'utf8')).toBe('old lock')
+  })
+})
+
+// Runs the script as `npm run cli-lock` does, with a fake deno 2.0.0 first on
+// PATH. The version check stops it before it writes, so the real cli.lock
+// stays as it is. Through a symlink, the main guard must still match.
+describe('npm run cli-lock', () => {
+  let dir: string
+
+  beforeEach(() => {
+    dir = mkdtempSync(path.join(tmpdir(), 'cli-lock-run-'))
+    writeFileSync(
+      path.join(dir, 'deno'),
+      '#!/bin/sh\necho "deno 2.0.0 (stable, release, x86_64-unknown-linux-gnu)"\n'
+    )
+    chmodSync(path.join(dir, 'deno'), 0o755)
+    symlinkSync(path.resolve('.'), path.join(dir, 'repo'))
+  })
+
+  afterEach(() => {
+    rmSync(dir, { recursive: true, force: true })
+  })
+
+  it.each([
+    ['directly', () => path.resolve('script/cli-lock.mjs')],
+    ['through a symlink', () => path.join(dir, 'repo/script/cli-lock.mjs')]
+  ])('exits 1 when the deno version differs, run %s', (_name, scriptPath) => {
+    const lockBefore = readFileSync(CLI_LOCK_PATH, 'utf8')
+
+    const result = spawnSync(process.execPath, [scriptPath()], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: `${dir}${path.delimiter}${process.env.PATH}`
+      }
+    })
+
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain(
+      `deno on PATH is 2.0.0, not ${DENO_VERSION}.`
+    )
+    expect(readFileSync(CLI_LOCK_PATH, 'utf8')).toBe(lockBefore)
   })
 })
