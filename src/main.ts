@@ -22,6 +22,13 @@ export async function run(): Promise<void> {
     const token = core.getInput('token')
     if (token) {
       core.setSecret(token)
+    } else {
+      core.info('token is empty: the CLI signs in with GitHub Actions OIDC.')
+      if (process.env.SKMTC_HUB_TOKEN) {
+        core.info(
+          'The action ignores SKMTC_HUB_TOKEN in the environment; set `token`.'
+        )
+      }
     }
 
     const inputs = readInputs()

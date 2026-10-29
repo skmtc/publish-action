@@ -64,6 +64,11 @@ const ENV_VARS = [
   'ACTIONS_ID_TOKEN_REQUEST_TOKEN'
 ]
 
+const EMPTY_TOKEN_LINE =
+  'token is empty: the CLI signs in with GitHub Actions OIDC.'
+const IGNORED_ENV_LINE =
+  'The action ignores SKMTC_HUB_TOKEN in the environment; set `token`.'
+
 const OIDC_REQUEST_URL =
   'https://run-actions-1-azure-eastus.actions.githubusercontent.com/42/idtoken/abc/def?api-version=2.0'
 
@@ -120,6 +125,15 @@ describe('main.ts', () => {
     expect(options?.ignoreReturnCode).toBe(true)
   })
 
+  it('logs no sign-in line with a token, even with an inherited SKMTC_HUB_TOKEN', async () => {
+    process.env.SKMTC_HUB_TOKEN = 'inherited'
+
+    await run()
+
+    expect(core.info).not.toHaveBeenCalledWith(EMPTY_TOKEN_LINE)
+    expect(core.info).not.toHaveBeenCalledWith(IGNORED_ENV_LINE)
+  })
+
   it('allows no OIDC variables or host with a token, even in an OIDC job', async () => {
     process.env.GITHUB_ACTIONS = 'true'
     process.env.ACTIONS_ID_TOKEN_REQUEST_URL = OIDC_REQUEST_URL
@@ -150,6 +164,22 @@ describe('main.ts', () => {
       expect(core.getInput.mock.calls[0]).toEqual(['token'])
       expect(core.setSecret).not.toHaveBeenCalled()
       expect(core.setFailed).not.toHaveBeenCalled()
+    })
+
+    it('says the CLI signs in with OIDC, and not that it ignores SKMTC_HUB_TOKEN', async () => {
+      await run()
+
+      expect(core.info).toHaveBeenCalledWith(EMPTY_TOKEN_LINE)
+      expect(core.info).not.toHaveBeenCalledWith(IGNORED_ENV_LINE)
+    })
+
+    it('says the action ignores an inherited SKMTC_HUB_TOKEN', async () => {
+      process.env.SKMTC_HUB_TOKEN = 'inherited'
+
+      await run()
+
+      expect(core.info).toHaveBeenCalledWith(EMPTY_TOKEN_LINE)
+      expect(core.info).toHaveBeenCalledWith(IGNORED_ENV_LINE)
     })
 
     it('gives the CLI no SKMTC_HUB_TOKEN, even an inherited one', async () => {

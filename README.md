@@ -77,7 +77,9 @@ See [Sign in with GitHub Actions OIDC](#sign-in-with-github-actions-oidc).
 
 When `token` is empty, the CLI signs in with GitHub Actions OIDC. It requests an
 OIDC token from GitHub and exchanges it at the hub for a short-lived token that
-can publish to one API.
+can publish to one API. The action reads the token only from the `token` input.
+It ignores `SKMTC_HUB_TOKEN` in the job's `env`, and it logs a line when it
+does.
 
 1. An admin of the API links the repository on skmtc.dev: open the API settings,
    then **Linked repositories**. The repository must be public, and the admin
@@ -120,9 +122,7 @@ with:
   visibility: private
 ```
 
-Then remove `visibility`. A publish with `visibility` to an API that exists does
-not send webhook events or pipeline deliveries, and drops `origin-url`
-(skmtc/skmtc-hub#2146).
+Then remove `visibility`. Without it, a typo in the slug cannot create an API.
 
 ### The origin URL
 
