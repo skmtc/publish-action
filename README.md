@@ -115,13 +115,15 @@ job. A warm install is a second run in the same job.
 
 | Runner                                      | Cold install | Warm install |
 | ------------------------------------------- | ------------ | ------------ |
-| `ubuntu-latest`                             | to measure   | to measure   |
-| `macos-latest`                              | to measure   | to measure   |
-| `windows-latest`                            | to measure   | to measure   |
+| `ubuntu-latest`                             | 6.4 s        | 0.3 s        |
+| `macos-latest`                              | 8.7 s        | 0.6 s        |
+| `windows-latest`                            | 18.4 s       | 0.7 s        |
 | macOS arm64 (local, Deno 2.9.8, CLI 0.9.60) | 9.1 s        | 1.2 s        |
 
-The CI rows come from the `GitHub Actions Test` job of the
-[CI workflow](.github/workflows/ci.yml). Each run logs
+The CI rows come from one run of the `GitHub Actions Test` job of the
+[CI workflow](.github/workflows/ci.yml), with Deno 2.9.8 and CLI 0.9.60
+([run 40885678489](https://github.com/skmtc/publish-action/actions/runs/40885678489)).
+Each run logs
 `Installed Deno <version> and @skmtc/cli <version> in <n> ms`.
 
 ## Development
