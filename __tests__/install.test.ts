@@ -50,7 +50,7 @@ describe('install.ts', () => {
         deno: path.join('/tool-cache/deno/2.9.8/x64', 'deno'),
         cached: true
       })
-      expect(tc.find).toHaveBeenCalledWith('deno', DENO_VERSION)
+      expect(tc.find).toHaveBeenCalledWith('deno', DENO_VERSION, 'x64')
       expect(tc.downloadTool).not.toHaveBeenCalled()
     })
 
@@ -68,7 +68,12 @@ describe('install.ts', () => {
         'https://github.com/denoland/deno/releases/download/v2.9.8/deno-x86_64-pc-windows-msvc.zip'
       )
       expect(tc.extractZip).toHaveBeenCalledWith('/tmp/deno.zip')
-      expect(tc.cacheDir).toHaveBeenCalledWith('/tmp/deno', 'deno', '2.9.8')
+      expect(tc.cacheDir).toHaveBeenCalledWith(
+        '/tmp/deno',
+        'deno',
+        '2.9.8',
+        'x64'
+      )
     })
   })
 

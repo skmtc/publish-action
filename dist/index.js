@@ -34159,7 +34159,7 @@ const DENO_VERSION = '2.9.8';
  */
 async function installDeno(platform = process.platform, arch = process.arch) {
     const binary = platform === 'win32' ? 'deno.exe' : 'deno';
-    const cachedPath = find('deno', DENO_VERSION);
+    const cachedPath = find('deno', DENO_VERSION, arch);
     if (cachedPath) {
         info(`Using cached Deno ${DENO_VERSION} from ${cachedPath}.`);
         return { deno: path$1.join(cachedPath, binary), cached: true };
@@ -34168,7 +34168,7 @@ async function installDeno(platform = process.platform, arch = process.arch) {
     info(`Downloading Deno from ${url}.`);
     const zipPath = await downloadTool(url);
     const extractedFolder = await extractZip(zipPath);
-    const newCachedPath = await cacheDir(extractedFolder, 'deno', DENO_VERSION);
+    const newCachedPath = await cacheDir(extractedFolder, 'deno', DENO_VERSION, arch);
     info(`Cached Deno to ${newCachedPath}.`);
     return { deno: path$1.join(newCachedPath, binary), cached: false };
 }
@@ -34213,9 +34213,10 @@ async function report(output, file, installLine) {
         return;
     }
     if (result?.type === 'failed') {
+        // Fail before the summary write, which can throw.
         annotate(result, file);
-        await writeFailedSummary(result, installLine);
         setFailed(`skmtc api publish failed: ${result.code}: ${result.message}`);
+        await writeFailedSummary(result, installLine);
         return;
     }
     setFailed(`skmtc api publish exited with code ${output.exitCode} and no JSON result.\n${stderrTail(output.stderr)}`);

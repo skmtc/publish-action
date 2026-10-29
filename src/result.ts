@@ -46,11 +46,12 @@ export async function report(
   }
 
   if (result?.type === 'failed') {
+    // Fail before the summary write, which can throw.
     annotate(result, file)
-    await writeFailedSummary(result, installLine)
     core.setFailed(
       `skmtc api publish failed: ${result.code}: ${result.message}`
     )
+    await writeFailedSummary(result, installLine)
     return
   }
 

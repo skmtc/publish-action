@@ -18,7 +18,7 @@ export async function installDeno(
   arch: string = process.arch
 ): Promise<{ deno: string; cached: boolean }> {
   const binary = platform === 'win32' ? 'deno.exe' : 'deno'
-  const cachedPath = tc.find('deno', DENO_VERSION)
+  const cachedPath = tc.find('deno', DENO_VERSION, arch)
 
   if (cachedPath) {
     core.info(`Using cached Deno ${DENO_VERSION} from ${cachedPath}.`)
@@ -30,7 +30,12 @@ export async function installDeno(
 
   const zipPath = await tc.downloadTool(url)
   const extractedFolder = await tc.extractZip(zipPath)
-  const newCachedPath = await tc.cacheDir(extractedFolder, 'deno', DENO_VERSION)
+  const newCachedPath = await tc.cacheDir(
+    extractedFolder,
+    'deno',
+    DENO_VERSION,
+    arch
+  )
   core.info(`Cached Deno to ${newCachedPath}.`)
 
   return { deno: path.join(newCachedPath, binary), cached: false }

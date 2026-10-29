@@ -184,6 +184,22 @@ describe('result.ts', () => {
       ])
     })
 
+    it('fails with the CLI message when the summary write throws', async () => {
+      core.summary.write.mockRejectedValue(new Error('no GITHUB_STEP_SUMMARY'))
+
+      await expect(
+        report(
+          cliOutput(1, { type: 'failed', code: 'network', message: 'm' }),
+          'openapi.yaml',
+          installLine
+        )
+      ).rejects.toThrow('no GITHUB_STEP_SUMMARY')
+
+      expect(core.setFailed).toHaveBeenCalledWith(
+        'skmtc api publish failed: network: m'
+      )
+    })
+
     it('writes the code, message and request id to the summary', async () => {
       await report(
         cliOutput(1, {
