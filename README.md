@@ -149,8 +149,8 @@ npm run bundle
 Commit `dist/` with each change to `src/`. The `Check Transpiled JavaScript`
 workflow fails when `dist/` does not match the source.
 
-When you change `DEFAULT_CLI_VERSION` in `src/args.ts`, write the lockfile again
-and commit it:
+When you change `DEFAULT_CLI_VERSION` in `src/args.ts` or `DENO_VERSION` in
+`src/install.ts`, write the lockfile again and commit it:
 
 ```sh
 npm run cli-lock
